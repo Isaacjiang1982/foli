@@ -3256,9 +3256,12 @@
           const sEvent = (window.specialEvents && Array.isArray(window.specialEvents)) ? window.specialEvents.find(e => e.date === dateString) : null;
           const globalFests = typeof getGlobalFestivals === 'function' ? getGlobalFestivals(year, month + 1, day) : [];
           const hasGlobalFest = globalFests.length > 0;
+          const isLiveDharmaDay = (year === 2026 && month === 3 && day === 6);
 
           cell.className = 'day-cell relative flex flex-col items-center justify-start min-h-[75px] py-1 rounded-xl cursor-pointer transition-all duration-200 active:scale-95 select-none group';
-          if (isToday) {
+          if (isLiveDharmaDay) {
+            cell.classList.add('bg-gradient-to-br', 'from-amber-200', 'via-yellow-300', 'to-amber-400', 'text-[#4a3728]', 'shadow-md', 'border', 'border-amber-600/40', 'hover:brightness-105');
+          } else if (isToday) {
             cell.classList.add('bg-[#b35c1e]', 'text-white', 'shadow-md');
           } else {
             cell.classList.add('text-stone-700', 'hover:bg-stone-100/50');
@@ -3279,14 +3282,15 @@
               if (m === '月') {
                 badge.className = 'w-3.5 h-3.5 flex items-center justify-center bg-stone-200/80 backdrop-blur-sm text-stone-600 rounded-md shadow-sm';
               } else {
-                badge.className = `w-3.5 h-3.5 flex items-center justify-center bg-gradient-to-br from-[#b35c1e] to-[#d68c45] text-white rounded-full shadow-sm opacity-90 ${isToday ? 'border border-white/40' : 'border border-[#b35c1e]/20'}`;
+                badge.className = `w-3.5 h-3.5 flex items-center justify-center bg-gradient-to-br from-[#b35c1e] to-[#d68c45] text-white rounded-full shadow-sm opacity-90 ${isToday && !isLiveDharmaDay ? 'border border-white/40' : 'border border-[#b35c1e]/20'}`;
               }
               rightMarkers.appendChild(badge);
             });
           }
           const num = document.createElement('div');
           num.innerText = day;
-          if (isToday) num.className = 'text-lg leading-none mx-auto font-serif font-bold drop-shadow-sm';
+          if (isLiveDharmaDay) num.className = 'text-lg leading-none mx-auto font-serif font-bold drop-shadow-sm text-[#5c4033]';
+          else if (isToday) num.className = 'text-lg leading-none mx-auto font-serif font-bold drop-shadow-sm';
           else if (hasGlobalFest) num.className = 'text-lg leading-none font-bold mx-auto font-serif text-indigo-600';
           else num.className = 'text-lg leading-none font-medium mx-auto font-serif opacity-90 group-hover:opacity-100';
           topRow.appendChild(leftMarkers);
@@ -3305,9 +3309,11 @@
           } catch (e) {}
           if (info && info.jieqi) displayText = info.jieqi;
           const lunarDiv = document.createElement('div');
-          if (info && info.jieqi) lunarDiv.className = isToday ? 'text-[10px] text-orange-100 font-bold' : 'text-[10px] text-[#b35c1e] font-bold';
+          if (isLiveDharmaDay) {
+            lunarDiv.className = 'text-[10px] text-[#6b4f2e] font-medium';
+          } else if (info && info.jieqi) lunarDiv.className = isToday ? 'text-[10px] text-orange-100 font-bold' : 'text-[10px] text-[#b35c1e] font-bold';
           else lunarDiv.className = isToday ? 'text-[10px] text-orange-100/90 font-medium' : 'text-[10px] text-stone-500/80 font-medium';
-          if (info && info.festival) lunarDiv.className = isToday ? 'text-[10px] text-white font-bold' : 'text-[10px] text-[#b35c1e] font-bold';
+          if (!isLiveDharmaDay && info && info.festival) lunarDiv.className = isToday ? 'text-[10px] text-white font-bold' : 'text-[10px] text-[#b35c1e] font-bold';
           lunarDiv.innerText = displayText || ' ';
           midRow.appendChild(lunarDiv);
           cell.appendChild(midRow);
@@ -3318,10 +3324,16 @@
           if (info && info.festival) {
             const festDiv = document.createElement('div');
             festDiv.innerText = info.festival;
-            festDiv.className = isToday ? 'text-[8px] text-white/90 leading-tight text-center w-full truncate font-bold' : 'text-[8px] text-[#b35c1e] leading-tight text-center w-full truncate font-bold opacity-90';
+            festDiv.className = isLiveDharmaDay ? 'text-[8px] text-[#5c4033] leading-tight text-center w-full truncate font-bold' : (isToday ? 'text-[8px] text-white/90 leading-tight text-center w-full truncate font-bold' : 'text-[8px] text-[#b35c1e] leading-tight text-center w-full truncate font-bold opacity-90');
             bottomContainer.appendChild(festDiv);
           }
-          if (sEvent) {
+          if (isLiveDharmaDay) {
+            const liveLabel = document.createElement('div');
+            liveLabel.innerText = '佛陀直播开示';
+            liveLabel.className = 'text-[8px] leading-tight text-center w-full font-extrabold text-[#5c4033] bg-amber-100/70 border border-amber-700/35 rounded px-0.5 py-0.5';
+            bottomContainer.appendChild(liveLabel);
+          }
+          if (sEvent && !isLiveDharmaDay) {
             const typeStyles = { live_dharma_talk: { bg: '#FFD700', text: '#5C4033', border: '#B8860B' }, dharma_assembly: { bg: '#FFF4E6', text: '#E67E22', border: '#FD7E14' }, retreat: { bg: '#FEF9C3', text: '#854D0E', border: '#FACC15' }, organization_conference: { bg: '#EFF6FF', text: '#1D4ED8', border: '#3B82F6' }, default: { bg: '#F5F5F4', text: '#44403C', border: '#A8A29E' } };
             const style = typeStyles[sEvent.type] || typeStyles.default;
             if (!isToday) {
@@ -3342,7 +3354,7 @@
           }
           cell.appendChild(bottomContainer);
 
-          if (sEvent && typeof showTooltip === 'function') {
+          if (sEvent && !isLiveDharmaDay && typeof showTooltip === 'function') {
             cell.setAttribute('onmouseover', `showTooltip(event, '${(sEvent.description || sEvent.title || '').replace(/'/g, "\\'")}')`);
             cell.setAttribute('onmouseout', 'hideTooltip()');
           }
@@ -3351,9 +3363,10 @@
             window.currentDisplayDate = currentDate;
             updateDayInfo(currentDate);
             document.querySelectorAll('#calendar-grid .day-cell').forEach(c => {
-              c.classList.remove('ring-2', 'ring-[#b35c1e]', 'ring-white', 'ring-offset-2', 'bg-orange-100', 'bg-white/20', 'backdrop-blur-sm', 'border-white/80');
+              c.classList.remove('ring-2', 'ring-[#b35c1e]', 'ring-white', 'ring-amber-600', 'ring-offset-2', 'ring-offset-[#b35c1e]', 'ring-offset-amber-100', 'bg-orange-100', 'bg-white/20', 'backdrop-blur-sm', 'border-white/80');
             });
-            if (isToday) cell.classList.add('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-[#b35c1e]');
+            if (isToday && !isLiveDharmaDay) cell.classList.add('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-[#b35c1e]');
+            else if (isLiveDharmaDay) cell.classList.add('ring-2', 'ring-amber-600', 'ring-offset-2', 'ring-offset-amber-100');
             else cell.classList.add('bg-white/20', 'backdrop-blur-sm', 'border', 'border-white/80');
           };
         } else {
