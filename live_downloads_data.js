@@ -1,6 +1,10 @@
 
 const live_downloads = [
     {
+        "title": "20260406(農曆二月十九)觀音菩薩吉祥日直播",
+        "url1": "https://www.alipan.com/s/USzC2XCkwwd"
+    },
+    {
         "title": "20260216 除夕夜全球直播",
         "url1": "https://www.alipan.com/s/AGykZhEuhWq",
         "url2": "https://e.pcloud.link/publink/show?code=XZFmq3ZapSQhhr0O40Ko7uvF4dNyBxzfWpy"
@@ -29,9 +33,5 @@ const live_downloads = [
         "title": "20250318 觀音菩薩吉祥日直播",
         "url1": "https://www.alipan.com/s/SAHrw1onFf5",
         "url2": "https://e.pcloud.link/publink/show?code=XZaYq3ZlW5UGPBctakIrmjNsoO33kYEzvMk"
-    },
-    {
-        "title": "20260406(農曆二月十九)觀音菩薩吉祥日直播",
-        "url1": "https://www.alipan.com/s/USzC2XCkwwd"
     }
 ];

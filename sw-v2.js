@@ -1,4 +1,4 @@
-const CACHE_NAME = 'foli-cache-v21.2';
+﻿const CACHE_NAME = 'foli-cache-v21.3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -18,13 +18,12 @@ const ASSETS_TO_CACHE = [
   './ai_chat.js?v=21.0',
   './search_data.js?v=21.0',
   './events_data.js?v=21.0',
-  './live_downloads_data.js?v=21.0',
+  './live_downloads_data.js?v=21.3',
   'https://cdn.tailwindcss.com'
 ];
 
 // Install Event: Cache Core Assets (per-item so one 404 doesn't block activate)
-// 不在此處 skipWaiting，由頁面點「更新」時發送 SKIP_WAITING，以便顯示更新提醒
-self.addEventListener('install', (event) => {
+// 涓嶅湪姝よ檿 skipWaiting锛岀敱闋侀潰榛炪€屾洿鏂般€嶆檪鐧奸€?SKIP_WAITING锛屼互渚块’绀烘洿鏂版彁閱?self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('SW: Pre-caching offline assets');
