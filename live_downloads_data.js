@@ -29,5 +29,9 @@ const live_downloads = [
         "title": "20250318 觀音菩薩吉祥日直播",
         "url1": "https://www.alipan.com/s/SAHrw1onFf5",
         "url2": "https://e.pcloud.link/publink/show?code=XZaYq3ZlW5UGPBctakIrmjNsoO33kYEzvMk"
+    },
+    {
+        "title": "20260406(農曆二月十九)觀音菩薩吉祥日直播",
+        "url1": "https://www.alipan.com/s/USzC2XCkwwd"
     }
 ];
