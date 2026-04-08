@@ -1,7 +1,7 @@
 
 const live_downloads = [
     {
-        "title": "20260406(農曆二月十九)觀音菩薩吉祥日直播",
+        "title": "202604060(農曆二月十九)觀音菩薩吉祥日直播",
         "url1": "https://www.alipan.com/s/USzC2XCkwwd"
     },
     {
