@@ -1,8 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>闁辫畝闁嬬ず</title>
+  <title>閱讀開示</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -21,7 +21,6 @@
   <!-- Load pre-bundled data if available (for offline mode) -->
   <script src="i18n.js?v=21.0"></script>
   <script src="sutras_data.js?v=21.0"></script>
-  <script src="search_data.js?v=21.0"></script>
   <script src="ai_chat.js?v=21.0"></script>
 </head>
 <body class="bg-gradient-to-br from-[#f8c390] via-[#f9dba0] to-[#fbf2d3] bg-fixed text-[#2e2e2e] min-h-screen flex flex-col selection:bg-[#b35c1e] selection:text-white">
@@ -32,13 +31,13 @@
       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
     </svg>
   </button>
-  <div id="header-title" class="text-lg font-bold tracking-wide truncate max-w-[55%] drop-shadow-sm" data-i18n="reader_title">鏂囧瓧闁嬬ず</div>
+  <div id="header-title" class="text-lg font-bold tracking-wide truncate max-w-[55%] drop-shadow-sm" data-i18n="reader_title">文字開示</div>
   <div class="flex gap-2">
       <button onclick="toggleBookmarks()" class="w-9 h-9 flex justify-center items-center text-[#8B4513] text-lg active:scale-90 transition-transform hover:bg-white/40 rounded-full border border-white/20 shadow-sm">
-        馃敄
+        🔖
       </button>
       <button onclick="toggleSettings()" class="w-9 h-9 flex justify-center items-center text-[#8B4513] text-lg active:scale-90 transition-transform hover:bg-white/40 rounded-full border border-white/20 shadow-sm">
-        鈿欙笍
+        ⚙️
       </button>
   </div>
 </header>
@@ -53,7 +52,7 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span data-i18n="loading">姝ｅ湪杓夊叆鏂囩珷...</span>
+                <span data-i18n="loading">正在載入文章...</span>
             </div>
         </div>
     </div>
@@ -65,9 +64,9 @@
     <div class="absolute top-14 right-16 bg-white/80 backdrop-blur-2xl p-5 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] w-80 border border-white/60 animate-in fade-in slide-in-from-top-4 duration-200 ring-1 ring-white/50">
         <div class="flex justify-between items-center mb-4 border-b border-[#8B4513]/10 pb-2">
             <span class="font-bold text-[#5c4033] flex items-center gap-2">
-                馃敄 鏇哥堡绠＄悊 (<span id="bookmark-count">0</span>/3)
+                🔖 書籤管理 (<span id="bookmark-count">0</span>/3)
             </span>
-            <button onclick="toggleBookmarks()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#8B4513]/10 text-[#8B4513]/60 transition-colors">鉁?/button>
+            <button onclick="toggleBookmarks()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#8B4513]/10 text-[#8B4513]/60 transition-colors">✕</button>
         </div>
         
         <div class="space-y-3">
@@ -76,7 +75,7 @@
             </div>
 
             <button id="add-bookmark-btn" onclick="addBookmark()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#f8c390] to-[#f9dba0] text-[#5c4033] font-bold shadow-sm border border-white/50 hover:shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                <span>鉃?娣诲姞鐣跺墠閫插害</span>
+                <span>➕ 添加當前進度</span>
             </button>
         </div>
     </div>
@@ -88,20 +87,20 @@
     <div class="absolute top-14 right-4 bg-white/80 backdrop-blur-2xl p-5 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] w-72 border border-white/60 animate-in fade-in slide-in-from-top-4 duration-200 ring-1 ring-white/50">
         <div class="flex justify-between items-center mb-4 border-b border-[#8B4513]/10 pb-2">
             <span class="font-bold text-[#5c4033] flex items-center gap-2" data-i18n="reader_settings">
-                鈿欙笍 闁辫畝瑷疆
+                ⚙️ 閱讀設置
             </span>
-            <button onclick="toggleSettings()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#8B4513]/10 text-[#8B4513]/60 transition-colors">鉁?/button>
+            <button onclick="toggleSettings()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#8B4513]/10 text-[#8B4513]/60 transition-colors">✕</button>
         </div>
         
         <div class="space-y-4">
              <!-- Language Selector -->
              <div>
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-xs text-[#8B4513]/80 font-bold uppercase tracking-wider" data-i18n="language_label">璇█ / Language</span>
+                    <span class="text-xs text-[#8B4513]/80 font-bold uppercase tracking-wider" data-i18n="language_label">语言 / Language</span>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="setLanguage('zh-CN')" class="flex-1 py-1.5 rounded-xl border border-white/50 bg-white/40 text-xs font-medium text-[#5c4033] hover:bg-[#f8c390]/30 hover:border-[#f8c390] hover:text-[#8B4513] transition-all active:scale-95 shadow-sm">绠€浣?/button>
-                    <button onclick="setLanguage('zh-TW')" class="flex-1 py-1.5 rounded-xl border border-white/50 bg-white/40 text-xs font-medium text-[#5c4033] hover:bg-[#f8c390]/30 hover:border-[#f8c390] hover:text-[#8B4513] transition-all active:scale-95 shadow-sm">绻侀珨</button>
+                    <button onclick="setLanguage('zh-CN')" class="flex-1 py-1.5 rounded-xl border border-white/50 bg-white/40 text-xs font-medium text-[#5c4033] hover:bg-[#f8c390]/30 hover:border-[#f8c390] hover:text-[#8B4513] transition-all active:scale-95 shadow-sm">简体</button>
+                    <button onclick="setLanguage('zh-TW')" class="flex-1 py-1.5 rounded-xl border border-white/50 bg-white/40 text-xs font-medium text-[#5c4033] hover:bg-[#f8c390]/30 hover:border-[#f8c390] hover:text-[#8B4513] transition-all active:scale-95 shadow-sm">繁體</button>
                     <button onclick="setLanguage('en')" class="flex-1 py-1.5 rounded-xl border border-white/50 bg-white/40 text-xs font-medium text-[#5c4033] hover:bg-[#f8c390]/30 hover:border-[#f8c390] hover:text-[#8B4513] transition-all active:scale-95 shadow-sm">En</button>
                 </div>
             </div>
@@ -110,7 +109,7 @@
 
             <div>
                 <div class="flex justify-between text-xs text-[#8B4513]/80 font-bold uppercase tracking-wider mb-2">
-                    <span data-i18n="font_size_label">瀛楅珨澶у皬</span>
+                    <span data-i18n="font_size_label">字體大小</span>
                     <span id="font-size-label" class="text-[#8B4513]">18px</span>
                 </div>
                 <input type="range" id="font-size-slider" min="14" max="32" step="1" value="18" 
@@ -123,7 +122,8 @@
             </div>
             
             <div class="p-3 bg-white/40 rounded-xl border border-white/50 text-[#5c4033] text-justify leading-relaxed transition-all duration-200 text-xs shadow-inner" id="settings-preview-text" data-i18n="preview_text">
-                闋愯鏂囧瓧 Preview Text.<br>姝よō缃儏褰遍熆浣涚稉鑸囬枊绀虹殑闁辫畝闋侀潰銆?            </div>
+                預覽文字 Preview Text.<br>此設置僅影響佛經與開示的閱讀頁面。
+            </div>
         </div>
     </div>
 </div>
@@ -170,7 +170,7 @@
       addBtn.disabled = bookmarks.length >= 3;
       
       if (bookmarks.length === 0) {
-          list.innerHTML = '<div class="text-center text-[#8B4513]/50 text-sm py-4">鏆劇鏇哥堡<br>No Bookmarks</div>';
+          list.innerHTML = '<div class="text-center text-[#8B4513]/50 text-sm py-4">暫無書籤<br>No Bookmarks</div>';
           return;
       }
 
@@ -178,11 +178,12 @@
           <div class="p-3 bg-white/40 rounded-xl border border-white/50 flex justify-between items-center group hover:bg-white/60 transition-all">
               <div class="flex-1 cursor-pointer" onclick="jumpToBookmark(${b.percent})">
                   <div class="text-xs text-[#8B4513]/60 mb-0.5">${new Date(b.timestamp).toLocaleString()}</div>
-                  <div class="text-sm text-[#5c4033] font-medium truncate w-48">${b.preview || '鏇哥堡 ' + (index + 1)}</div>
-                  <div class="text-[10px] text-[#8B4513]/40">閫插害: ${(b.percent * 100).toFixed(1)}%</div>
+                  <div class="text-sm text-[#5c4033] font-medium truncate w-48">${b.preview || '書籤 ' + (index + 1)}</div>
+                  <div class="text-[10px] text-[#8B4513]/40">進度: ${(b.percent * 100).toFixed(1)}%</div>
               </div>
               <button onclick="deleteBookmark(${index})" class="p-2 text-[#8B4513]/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                  馃棏锔?              </button>
+                  🗑️
+              </button>
           </div>
       `).join('');
   }
@@ -190,7 +191,7 @@
   function addBookmark() {
       const bookmarks = getBookmarks();
       if (bookmarks.length >= 3) {
-          alert('鏈€澶氬彧鑳芥坊鍔?3 鍊嬫浉绫nMax 3 bookmarks allowed.');
+          alert('最多只能添加 3 個書籤\nMax 3 bookmarks allowed.');
           return;
       }
 
@@ -201,12 +202,12 @@
 
       // Get preview text (approximate)
       // Try to find the visible element or just take a snippet from where we are?
-      // Simple approach: Just use "閫插害 X%" as title, or try to grab text.
+      // Simple approach: Just use "進度 X%" as title, or try to grab text.
       // Let's try to grab the first text node in viewport.
-      let preview = '鏇哥堡';
+      let preview = '書籤';
       // This is a bit complex to do perfectly, so we'll just use "Progress X%" or user input?
       // User input is better but slower. Let's auto-generate.
-      preview = `闁辫畝閫插害 ${(percent * 100).toFixed(0)}%`;
+      preview = `閱讀進度 ${(percent * 100).toFixed(0)}%`;
 
       const newBookmark = {
           id: Date.now(),
@@ -221,7 +222,7 @@
   }
 
   function deleteBookmark(index) {
-      if(!confirm('纰哄畾鍒櫎姝ゆ浉绫ゅ棊锛?)) return;
+      if(!confirm('確定刪除此書籤嗎？')) return;
       const bookmarks = getBookmarks();
       bookmarks.splice(index, 1);
       localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarks));
@@ -399,13 +400,18 @@
 
   // Helper: Lazy Load Search Data
   let isSearchDataLoading = false;
+  let searchDataLoadFailed = false;
   function loadSearchData() {
     if (typeof SEARCH_DATA !== 'undefined') return Promise.resolve();
-    if (isSearchDataLoading) return new Promise(resolve => {
+    if (searchDataLoadFailed) return Promise.reject(new Error('search_data.js unavailable'));
+    if (isSearchDataLoading) return new Promise((resolve, reject) => {
         const check = setInterval(() => {
             if (typeof SEARCH_DATA !== 'undefined') {
                 clearInterval(check);
                 resolve();
+            } else if (searchDataLoadFailed) {
+                clearInterval(check);
+                reject(new Error('search_data.js unavailable'));
             }
         }, 100);
     });
@@ -420,7 +426,8 @@
         };
         script.onerror = () => {
             isSearchDataLoading = false;
-            reject();
+            searchDataLoadFailed = true;
+            reject(new Error('failed to load search_data.js'));
         };
         document.head.appendChild(script);
     });
@@ -506,7 +513,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span class="text-sm">姝ｅ湪鍢楄│闆㈢窔鍔犺級 (15MB)...</span>
+                    <span class="text-sm">正在嘗試離線加載 (15MB)...</span>
                 </div>
               `;
 
@@ -518,8 +525,8 @@
                    console.error('Offline load failed:', offlineError);
                    document.getElementById('article-content').innerHTML = `
                     <div class="p-4 bg-red-50 text-red-600 rounded-xl text-center border border-red-100">
-                        <div class="font-bold mb-2">杓夊叆澶辨晽</div>
-                        <div class="text-sm opacity-80">鐒℃硶鍔犺級鍏у銆傝珛妾㈡煡缍茬怠閫ｆ帴銆?/div>
+                        <div class="font-bold mb-2">載入失敗</div>
+                        <div class="text-sm opacity-80">無法加載內容。請檢查網絡連接。</div>
                         <div class="text-xs mt-2 text-stone-400">${fileName}</div>
                     </div>
                 `;
@@ -527,7 +534,7 @@
           }
       })();
   } else {
-      document.getElementById('article-content').innerText = "鏈寚瀹氭枃绔犳獢妗堛€?;
+      document.getElementById('article-content').innerText = "未指定文章檔案。";
   }
 </script>
 <script>
@@ -539,13 +546,13 @@
       var b = document.createElement('div');
       b.id = 'reader-update-banner';
       b.className = 'fixed bottom-4 left-4 right-4 z-50 px-4 py-2 rounded-xl bg-amber-100 border border-amber-300 text-center text-sm text-[#5c4033] shadow-lg';
-      b.innerHTML = '<span>鐧肩従鏂扮増鏈?/span> <button type="button" class="ml-2 font-bold text-[#b35c1e] underline">榛炴搳鏇存柊</button>';
+      b.innerHTML = '<span>發現新版本</span> <button type="button" class="ml-2 font-bold text-[#b35c1e] underline">點擊更新</button>';
       b.querySelector('button').onclick = function() {
         if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       };
       document.body.appendChild(b);
     }
-    navigator.serviceWorker.register('/sw-v2.js?v=21.3').then(function(r) {
+    navigator.serviceWorker.register('/sw-v2.js?v=21.2').then(function(r) {
       reg = r;
       if (r.waiting && navigator.serviceWorker.controller) showReaderUpdateBanner();
       r.onupdatefound = function() {

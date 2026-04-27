@@ -958,7 +958,14 @@
       
       // Update placeholders
       const searchInput = document.getElementById('search-input');
-      if(searchInput) searchInput.placeholder = t('search_placeholder');
+      if(searchInput) {
+          searchInput.placeholder = t('search_placeholder');
+          searchInput.addEventListener('input', () => {
+              clearTimeout(searchTimeout);
+              const q = searchInput.value;
+              searchTimeout = setTimeout(() => performSearch(q), 180);
+          });
+      }
 
       const savedSize = localStorage.getItem('reader_font_size');
       if(savedSize) {
@@ -1308,14 +1315,63 @@
   let currentFilter = 'all';
   let searchTimeout = null;
   let isSearchDataLoading = false;
+  let searchDataLoadFailed = false;
+  let fallbackSearchDataCache = null;
+
+  function escapeRegExp(value) {
+      return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function normalizeSearchText(value) {
+      return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function inferCategoryById(id) {
+      const key = String(id || '');
+      if (/文字開示|文字开示/i.test(key)) return 'teaching';
+      if (/祖師|祖师|大德/i.test(key)) return 'master';
+      return 'sutra';
+  }
+
+  function buildFallbackSearchData() {
+      if (Array.isArray(fallbackSearchDataCache)) return fallbackSearchDataCache;
+      if (typeof SUTRAS_DATA === 'undefined' || !SUTRAS_DATA || typeof SUTRAS_DATA !== 'object') {
+          fallbackSearchDataCache = [];
+          return fallbackSearchDataCache;
+      }
+
+      fallbackSearchDataCache = Object.entries(SUTRAS_DATA).map(([id, content]) => {
+          const title = String(id || '').replace(/\.[^/.]+$/, '');
+          return {
+              id,
+              title,
+              category: inferCategoryById(id),
+              content: typeof content === 'string' ? content : String(content || ''),
+              type: 'txt'
+          };
+      });
+
+      return fallbackSearchDataCache;
+  }
+
+  function getSearchDataset() {
+      if (typeof SEARCH_DATA !== 'undefined' && Array.isArray(SEARCH_DATA) && SEARCH_DATA.length > 0) {
+          return SEARCH_DATA;
+      }
+      return buildFallbackSearchData();
+  }
 
   function loadSearchData() {
     if (typeof SEARCH_DATA !== 'undefined') return Promise.resolve();
-    if (isSearchDataLoading) return new Promise(resolve => {
+    if (searchDataLoadFailed) return Promise.reject(new Error('search_data.js unavailable'));
+    if (isSearchDataLoading) return new Promise((resolve, reject) => {
         const check = setInterval(() => {
             if (typeof SEARCH_DATA !== 'undefined') {
                 clearInterval(check);
                 resolve();
+            } else if (searchDataLoadFailed) {
+                clearInterval(check);
+                reject(new Error('search_data.js unavailable'));
             }
         }, 100);
     });
@@ -1330,7 +1386,8 @@
         };
         script.onerror = () => {
             isSearchDataLoading = false;
-            reject();
+            searchDataLoadFailed = true;
+            reject(new Error('failed to load search_data.js'));
         };
         document.head.appendChild(script);
     });
@@ -1376,8 +1433,9 @@
   function performSearch(query) {
       clearTimeout(searchTimeout);
       const clearBtn = document.getElementById('search-clear');
+      const safeQuery = String(query || '').trim();
       
-      if (!query) {
+      if (!safeQuery) {
           clearBtn.classList.add('hidden');
           document.getElementById('search-results').innerHTML = renderSuggestions();
           return;
@@ -1386,47 +1444,72 @@
       clearBtn.classList.remove('hidden');
 
       function runSearch() {
-          if (typeof SEARCH_DATA === 'undefined') {
-              // Lazy Load
-              document.getElementById('search-results').innerHTML = `
-                <div class="flex flex-col items-center justify-center py-20 text-[#8B4513]/40 gap-3">
-                    <svg class="animate-spin h-8 w-8 text-[#8B4513]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-sm">${t('search_loading_db')}</span>
-                </div>
-              `;
+          const q = normalizeSearchText(safeQuery);
+          const dataset = getSearchDataset();
+          const results = dataset.filter(item => {
+              // 深度搜索模式：没有 search_result 分类时，退化为“有正文的全文检索”
+              if (currentFilter === 'search_result') {
+                  let contentInDeep = '';
+                  if (typeof item.content === 'string') contentInDeep = item.content;
+                  else if (item.content && item.content.value) contentInDeep = item.content.value;
+                  if (!contentInDeep || contentInDeep.length < 40) return false;
+              } else if (currentFilter !== 'all' && item.category !== currentFilter) {
+                  return false;
+              }
 
-              loadSearchData().then(() => {
-                 runSearch();
-              }).catch(() => {
-                 document.getElementById('search-results').innerHTML = `<div class="text-center text-red-500 mt-10">${t('search_load_fail')}</div>`;
-              });
-              return;
-          }
-
-          const results = SEARCH_DATA.filter(item => {
-              // Filter by category
-              if (currentFilter !== 'all' && item.category !== currentFilter) return false;
-              
-              // Filter by query (case insensitive)
-              const q = query.toLowerCase();
-              const titleMatch = (item.title || "").toLowerCase().includes(q);
-              
-              // Extract text content if it's an object/wrapped
-              let contentStr = "";
+              const titleNorm = normalizeSearchText(item.title || '');
+              let contentStr = '';
               if (typeof item.content === 'string') contentStr = item.content;
               else if (item.content && item.content.value) contentStr = item.content.value;
-              
-              const contentMatch = contentStr.toLowerCase().includes(q);
-              
-              return titleMatch || contentMatch;
-          });
+              const contentNorm = normalizeSearchText(contentStr);
 
-          renderSearchResults(results, query);
+              return titleNorm.includes(q) || contentNorm.includes(q);
+          }).map(item => {
+              let contentStr = '';
+              if (typeof item.content === 'string') contentStr = item.content;
+              else if (item.content && item.content.value) contentStr = item.content.value;
+              const titleNorm = normalizeSearchText(item.title || '');
+              const contentNorm = normalizeSearchText(contentStr);
+              let score = 0;
+
+              if (titleNorm === q) score += 120;
+              if (titleNorm.startsWith(q)) score += 80;
+              if (titleNorm.includes(q)) score += 50;
+              if (contentNorm.includes(q)) score += 20;
+              if (contentNorm.includes(` ${q} `)) score += 10;
+
+              return { ...item, _score: score };
+          }).sort((a, b) => b._score - a._score);
+
+          renderSearchResults(results, safeQuery);
       }
-      runSearch();
+
+      if (typeof SEARCH_DATA !== 'undefined' || searchDataLoadFailed) {
+          runSearch();
+          return;
+      }
+
+      // Lazy Load external index first; fallback to built-in SUTRAS_DATA automatically
+      document.getElementById('search-results').innerHTML = `
+        <div class="flex flex-col items-center justify-center py-20 text-[#8B4513]/40 gap-3">
+            <svg class="animate-spin h-8 w-8 text-[#8B4513]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-sm">${t('search_loading_db')}</span>
+        </div>
+      `;
+
+      loadSearchData()
+          .then(runSearch)
+          .catch(() => {
+              const fallbackData = buildFallbackSearchData();
+              if (fallbackData.length > 0) {
+                  runSearch();
+              } else {
+                  document.getElementById('search-results').innerHTML = `<div class="text-center text-red-500 mt-10">${t('search_load_fail')}</div>`;
+              }
+          });
   }
 
   function renderSearchResults(results, query) {
@@ -1495,7 +1578,7 @@
 
   function highlightMatch(text, query) {
       if (!query || !text) return text;
-      const regex = new RegExp(`(${query})`, 'gi');
+      const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
       return text.replace(regex, '<span class="bg-yellow-200/80 text-stone-900 font-bold rounded-sm px-0.5">$1</span>');
   }
 
@@ -3119,7 +3202,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=21.2').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=21.3').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
