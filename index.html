@@ -1951,11 +1951,426 @@
       return list;
   }
 
+  const WEATHER_CACHE_KEY = 'foli_today_weather_cache_v1';
+  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v2';
+  let dayInfoRenderToken = 0;
+
+  function getLocalDateKey(date = new Date()) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+  }
+
+  function getWeatherDescriptionByCode(code) {
+      const weatherTexts = {
+          'zh-CN': {
+              clear: '晴',
+              mostlyClear: '少云',
+              partlyCloudy: '多云',
+              overcast: '阴',
+              fog: '有雾',
+              drizzle: '毛毛雨',
+              rain: '小雨',
+              heavyRain: '大雨',
+              snow: '雪',
+              thunder: '雷雨'
+          },
+          'zh-TW': {
+              clear: '晴',
+              mostlyClear: '少雲',
+              partlyCloudy: '多雲',
+              overcast: '陰',
+              fog: '有霧',
+              drizzle: '毛毛雨',
+              rain: '小雨',
+              heavyRain: '大雨',
+              snow: '雪',
+              thunder: '雷雨'
+          },
+          en: {
+              clear: 'Clear',
+              mostlyClear: 'Mostly clear',
+              partlyCloudy: 'Partly cloudy',
+              overcast: 'Overcast',
+              fog: 'Fog',
+              drizzle: 'Drizzle',
+              rain: 'Rain',
+              heavyRain: 'Heavy rain',
+              snow: 'Snow',
+              thunder: 'Thunderstorm'
+          }
+      };
+      const lang = weatherTexts[currentLang] ? currentLang : 'en';
+      const textSet = weatherTexts[lang];
+      const c = Number(code);
+      if (c === 0) return textSet.clear;
+      if (c === 1) return textSet.mostlyClear;
+      if (c === 2) return textSet.partlyCloudy;
+      if (c === 3) return textSet.overcast;
+      if ([45, 48].includes(c)) return textSet.fog;
+      if ([51, 53, 55, 56, 57].includes(c)) return textSet.drizzle;
+      if ([61, 63, 65, 80, 81].includes(c)) return textSet.rain;
+      if ([66, 67, 82].includes(c)) return textSet.heavyRain;
+      if ([71, 73, 75, 77, 85, 86].includes(c)) return textSet.snow;
+      if ([95, 96, 99].includes(c)) return textSet.thunder;
+      return textSet.partlyCloudy;
+  }
+
+  function readWeatherCache() {
+      try {
+          return JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}');
+      } catch (e) {
+          return {};
+      }
+  }
+
+  function readDisasterCache() {
+      try {
+          return JSON.parse(localStorage.getItem(DISASTER_CACHE_KEY) || '{}');
+      } catch (e) {
+          return {};
+      }
+  }
+
+  function getCurrentPositionPromise() {
+      return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+              reject(new Error('geolocation_not_supported'));
+              return;
+          }
+          navigator.geolocation.getCurrentPosition(
+              resolve,
+              reject,
+              {
+                  enableHighAccuracy: false,
+                  timeout: 8000,
+                  maximumAge: 30 * 60 * 1000
+              }
+          );
+      });
+  }
+
+  async function fetchTodayWeatherSummary() {
+      const now = Date.now();
+      const todayKey = getLocalDateKey();
+      const cache = readWeatherCache();
+      if (cache.dateKey === todayKey && cache.summary && (now - (cache.fetchedAt || 0) < 60 * 60 * 1000)) {
+          return { summary: cache.summary };
+      }
+
+      let position;
+      try {
+          position = await getCurrentPositionPromise();
+      } catch (err) {
+          if (err && err.code === 1) {
+              return { denied: true };
+          }
+          return null;
+      }
+
+      const { latitude, longitude } = position.coords;
+      const weatherApi = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`;
+      const resp = await fetch(weatherApi);
+      if (!resp.ok) throw new Error(`weather_api_${resp.status}`);
+      const data = await resp.json();
+      const current = data && data.current ? data.current : null;
+      if (!current || typeof current.temperature_2m !== 'number') return null;
+
+      const condition = getWeatherDescriptionByCode(current.weather_code);
+      const temperature = Math.round(current.temperature_2m);
+      const summary = `${condition} ${temperature}°C`;
+      localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({
+          dateKey: todayKey,
+          fetchedAt: now,
+          summary
+      }));
+      return { summary };
+  }
+
+  async function renderTodayWeather(isToday, renderToken) {
+      const weatherEl = document.getElementById('today-weather-brief');
+      if (!weatherEl || !isToday) return;
+      weatherEl.textContent = t('weather_loading');
+      try {
+          const weather = await fetchTodayWeatherSummary();
+          if (renderToken !== dayInfoRenderToken) return;
+          if (!weather) {
+              weatherEl.textContent = t('weather_unavailable');
+              return;
+          }
+          if (weather.denied) {
+              weatherEl.textContent = t('weather_location_denied');
+              return;
+          }
+          weatherEl.textContent = weather.summary || t('weather_unavailable');
+      } catch (err) {
+          console.error('Weather fetch failed', err);
+          if (renderToken !== dayInfoRenderToken) return;
+          weatherEl.textContent = t('weather_unavailable');
+      }
+  }
+
+  function getDisasterTextSet() {
+      const textMap = {
+          'zh-CN': {
+              eq: '地震',
+              wildfire: '山火',
+              volcano: '火山',
+              flood: '洪灾',
+              typhoon: '台风',
+              storm: '强风暴',
+              war: '战争',
+              pandemic: '疫情',
+              countUnit: '起',
+              topMag: '最大',
+              noNatural: '未监测到自然灾害',
+              separator: '；'
+          },
+          'zh-TW': {
+              eq: '地震',
+              wildfire: '山火',
+              volcano: '火山',
+              flood: '洪災',
+              typhoon: '颱風',
+              storm: '強風暴',
+              war: '戰爭',
+              pandemic: '疫情',
+              countUnit: '起',
+              topMag: '最大',
+              noNatural: '未監測到自然災害',
+              separator: '；'
+          },
+          en: {
+              eq: 'Earthquake',
+              wildfire: 'Wildfire',
+              volcano: 'Volcano',
+              flood: 'Flood',
+              typhoon: 'Typhoon',
+              storm: 'Severe storm',
+              war: 'War',
+              pandemic: 'Epidemic',
+              countUnit: '',
+              topMag: 'max',
+              noNatural: 'No major natural hazards',
+              separator: '; '
+          }
+      };
+      return textMap[currentLang] || textMap.en;
+  }
+
+  function truncateText(text, maxLen = 64) {
+      if (!text) return '';
+      if (text.length <= maxLen) return text;
+      return `${text.slice(0, maxLen)}...`;
+  }
+
+  function isMajorWildfireTitle(title) {
+      if (!title) return false;
+      const t = String(title).toLowerCase();
+      const strongSignals = /(major|extreme|catastrophic|massive|megafire|deadly|evacuat|state of emergency|out of control|zero containment|destroyed)/i;
+      if (strongSignals.test(t)) return true;
+
+      const acresMatch = t.match(/(\d[\d,]*)\s*acres?/i);
+      if (acresMatch && acresMatch[1]) {
+          const acres = Number(acresMatch[1].replace(/,/g, ''));
+          if (!Number.isNaN(acres) && acres >= 50000) return true;
+      }
+
+      const hectareMatch = t.match(/(\d[\d,]*)\s*(hectares?|ha)\b/i);
+      if (hectareMatch && hectareMatch[1]) {
+          const hectares = Number(hectareMatch[1].replace(/,/g, ''));
+          if (!Number.isNaN(hectares) && hectares >= 20000) return true;
+      }
+      return false;
+  }
+
+  function isTyphoonAtLeastLevel12Title(title) {
+      if (!title) return false;
+      const t = String(title).toLowerCase();
+      if (!/(typhoon|hurricane|cyclone|tropical storm)/i.test(t)) return false;
+      if (/super typhoon/i.test(t)) return true;
+      if (/(category|cat)\s*([1-5])/i.test(t)) return true;
+
+      const kmhMatch = t.match(/(\d{2,3})\s*km\/h/i);
+      if (kmhMatch && kmhMatch[1]) {
+          const kmh = Number(kmhMatch[1]);
+          if (!Number.isNaN(kmh) && kmh >= 118) return true;
+      }
+      const msMatch = t.match(/(\d{2})\s*m\/s/i);
+      if (msMatch && msMatch[1]) {
+          const ms = Number(msMatch[1]);
+          if (!Number.isNaN(ms) && ms >= 33) return true;
+      }
+      if (/(beaufort|bf)\s*1[2-7]/i.test(t)) return true;
+      return false;
+  }
+
+  function buildNaturalHazardSummary(eonetEvents, texts) {
+      const counters = { wildfire: 0, volcano: 0, flood: 0, typhoon: 0, storm: 0 };
+      if (!Array.isArray(eonetEvents)) return '';
+
+      const majorNaturalRegex = /(major|severe|extreme|catastrophic|massive|deadly|evacuat|destroy|alert level|erupt|category [3-5]|cat ?[3-5])/i;
+      eonetEvents.forEach(eventItem => {
+          const cats = Array.isArray(eventItem && eventItem.categories) ? eventItem.categories : [];
+          const catIds = cats.map(c => c && c.id).filter(Boolean);
+          const title = String((eventItem && eventItem.title) || '').toLowerCase();
+          const isMajor = majorNaturalRegex.test(title);
+          if (catIds.includes('wildfires')) {
+              if (isMajorWildfireTitle(title)) counters.wildfire += 1;
+              return;
+          }
+          if (!isMajor) return;
+          if (catIds.includes('volcanoes')) counters.volcano += 1;
+          if (catIds.includes('floods')) counters.flood += 1;
+          if (catIds.includes('severeStorms')) {
+              if (isTyphoonAtLeastLevel12Title(title)) counters.typhoon += 1;
+              else counters.storm += 1;
+          }
+      });
+
+      const parts = [];
+      const pushPart = (label, count) => {
+          if (!count) return;
+          parts.push(`${label}${count}${texts.countUnit}`);
+      };
+      pushPart(texts.wildfire, counters.wildfire);
+      pushPart(texts.volcano, counters.volcano);
+      pushPart(texts.flood, counters.flood);
+      pushPart(texts.typhoon, counters.typhoon);
+      pushPart(texts.storm, counters.storm);
+      return parts.join('、');
+  }
+
+  function pickTrustedGeoHeadlines(redditChildren) {
+      const trustedDomains = new Set(['reuters.com', 'www.reuters.com', 'apnews.com', 'www.apnews.com', 'bbc.com', 'www.bbc.com']);
+      const items = Array.isArray(redditChildren) ? redditChildren : [];
+      const majorConflictRegex = /(full-scale|large-scale|major offensive|invasion|massive strike|barrage|airstrike|drone strike|missile attack|state of emergency|martial law|declared war|nuclear alert|chemical attack|civilian casualties)/i;
+      const majorHealthRegex = /(pandemic|epidemic|public health emergency|state of emergency|outbreak)/i;
+
+      function hasHighCasualtySignal(title) {
+          if (!title) return false;
+          const t = String(title).toLowerCase();
+          if (!/(killed|dead|death toll|casualt|injured)/i.test(t)) return false;
+          const n = t.match(/(\d{2,4})/);
+          if (!n || !n[1]) return false;
+          const num = Number(n[1]);
+          return !Number.isNaN(num) && num >= 50;
+      }
+
+      function isMajorGeoHeadline(title) {
+          if (!title) return false;
+          return majorConflictRegex.test(title) || majorHealthRegex.test(title) || hasHighCasualtySignal(title);
+      }
+
+      const normalized = items
+          .map(item => (item && item.data) ? item.data : null)
+          .filter(Boolean)
+          .filter(post => trustedDomains.has(String(post.domain || '').toLowerCase()))
+          .map(post => ({
+              title: String(post.title || ''),
+              domain: String(post.domain || '').toLowerCase()
+          }))
+          .filter(post => isMajorGeoHeadline(post.title));
+
+      const ruUaRegex = /(russia|ukraine|moscow|kyiv|kremlin|zelensky)/i;
+      const usIranRegex = /(iran|tehran|israel|us | u\.s\.|united states|washington)/i;
+
+      const ruUa = normalized.find(p => ruUaRegex.test(p.title));
+      const usIran = normalized.find(p => usIranRegex.test(p.title));
+      return { ruUa, usIran };
+  }
+
+  async function fetchMajorDisasterSummary() {
+      const now = Date.now();
+      const todayKey = getLocalDateKey();
+      const cache = readDisasterCache();
+      if (cache.dateKey === todayKey && typeof cache.summary === 'string' && (now - (cache.fetchedAt || 0) < 30 * 60 * 1000)) {
+          return { summary: cache.summary };
+      }
+
+      const texts = getDisasterTextSet();
+      const [eqResult, naturalResult, warPandemicResult] = await Promise.allSettled([
+          fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_day.geojson').then(r => {
+              if (!r.ok) throw new Error(`eq_api_${r.status}`);
+              return r.json();
+          }),
+          fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30').then(r => {
+              if (!r.ok) throw new Error(`eonet_api_${r.status}`);
+              return r.json();
+          }),
+          fetch('https://www.reddit.com/r/worldnews/new.json?limit=50&raw_json=1').then(r => {
+              if (!r.ok) throw new Error(`reddit_api_${r.status}`);
+              return r.json();
+          })
+      ]);
+
+      const summaryParts = [];
+
+      if (eqResult.status === 'fulfilled') {
+          const features = Array.isArray(eqResult.value && eqResult.value.features) ? eqResult.value.features : [];
+          const majorEq = features.filter(f => (Number(f && f.properties && f.properties.mag) || 0) >= 7.0);
+          if (majorEq.length > 0) {
+              const maxMag = Math.max(...majorEq.map(f => Number(f && f.properties && f.properties.mag) || 0));
+              summaryParts.push(`${texts.eq}${majorEq.length}${texts.countUnit}（${texts.topMag} M${maxMag.toFixed(1)}）`);
+          }
+      }
+
+      if (naturalResult.status === 'fulfilled') {
+          const events = Array.isArray(naturalResult.value && naturalResult.value.events) ? naturalResult.value.events : [];
+          const naturalSummary = buildNaturalHazardSummary(events, texts);
+          if (naturalSummary) {
+              summaryParts.push(naturalSummary);
+          }
+      }
+
+      if (warPandemicResult.status === 'fulfilled') {
+          const children = (((warPandemicResult.value || {}).data || {}).children) || [];
+          const geo = pickTrustedGeoHeadlines(children);
+          if (geo.ruUa) {
+              summaryParts.push(`${t('disaster_ru_ua')}：${truncateText(geo.ruUa.title, 42)} [${geo.ruUa.domain}]`);
+          }
+          if (geo.usIran) {
+              summaryParts.push(`${t('disaster_us_iran')}：${truncateText(geo.usIran.title, 42)} [${geo.usIran.domain}]`);
+          }
+      }
+
+      const summary = summaryParts.join(texts.separator).trim();
+
+      localStorage.setItem(DISASTER_CACHE_KEY, JSON.stringify({
+          dateKey: todayKey,
+          fetchedAt: now,
+          summary
+      }));
+      return { summary };
+  }
+
+  async function renderTodayDisaster(isToday, renderToken) {
+      const disasterEl = document.getElementById('today-disaster-brief');
+      if (!disasterEl || !isToday) return;
+      disasterEl.textContent = t('disaster_loading');
+      try {
+          const disaster = await fetchMajorDisasterSummary();
+          if (renderToken !== dayInfoRenderToken) return;
+          if (!disaster || !disaster.summary) {
+              disasterEl.textContent = t('disaster_none');
+              return;
+          }
+          disasterEl.textContent = disaster.summary;
+      } catch (err) {
+          console.error('Disaster fetch failed', err);
+          if (renderToken !== dayInfoRenderToken) return;
+          disasterEl.textContent = t('disaster_unavailable');
+      }
+  }
+
   // Render Day Info (Replaces Modal)
   function renderDayInfo(year, month, day) {
       const today = new Date();
       // Reset time for accurate comparison
       const isToday = (year === today.getFullYear() && month === (today.getMonth() + 1) && day === today.getDate());
+      dayInfoRenderToken += 1;
+      const renderToken = dayInfoRenderToken;
       
       // Title
       const titleText = isToday ? t('info_today') : t('info_day'); 
@@ -2062,6 +2477,11 @@
                 <div class="text-[#a67c52] text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                   <span class="w-1.5 h-1.5 rounded-full bg-[#a67c52]"></span>
                   ${titleText}
+                  ${isToday ? `
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-50/80 border border-sky-100 text-sky-900 text-[11px] normal-case font-semibold">
+                      <span>🌤️</span>
+                      <span id="today-weather-brief">${t('weather_loading')}</span>
+                  </span>` : ''}
                 </div>
                 <!-- Replaced Date with WuXing -->
                 <div class="text-[10px] font-bold text-[#8c7853] bg-[#f8c390]/20 px-2 py-1 rounded-lg border border-[#f8c390]/30">${wuxingStr || ''}</div>
@@ -2098,11 +2518,19 @@
       
             <!-- Buddhist Info -->
             ${infoHtml}
+            ${isToday ? `
+            <div class="mt-2 px-3 py-2 bg-rose-50/70 backdrop-blur-md rounded-xl border border-rose-100/70 shadow-sm flex items-start gap-2 text-xs text-rose-900">
+                 <span class="text-sm leading-none mt-0.5">🚨</span>
+                 <span class="font-semibold shrink-0">${t('disaster_today')}：</span>
+                 <span id="today-disaster-brief" class="leading-snug break-words overflow-hidden" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;">${t('disaster_loading')}</span>
+            </div>` : ''}
           `;
       
           const card = document.getElementById('day-info-card');
           if(card) {
                card.innerHTML = html;
+               renderTodayWeather(isToday, renderToken);
+               renderTodayDisaster(isToday, renderToken);
           }
       } catch (e) {
           console.error('Render Day Info Error', e);
