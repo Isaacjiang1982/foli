@@ -1,6 +1,10 @@
 
 const live_downloads = [
     {
+        "title": "20260520 文殊菩萨吉祥日直播开示",
+        "url1": "https://e.pcloud.link/publink/show?code=XZH44rZWp5mpKgxIIurgxITE3vqbQNEAq07"
+    },
+    {
         "title": "202604060(農曆二月十九)觀音菩薩吉祥日直播",
         "url1": "https://www.alipan.com/s/USzC2XCkwwd"
     },

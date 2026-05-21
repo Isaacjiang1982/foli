@@ -35,7 +35,7 @@
   <!-- Load AI Chat -->
   <script src="ai_chat.js?v=21.0"></script>
   <script src="events_data.js?v=21.0"></script>
-  <script src="live_downloads_data.js?v=21.5"></script>
+  <script src="live_downloads_data.js?v=21.6"></script>
   <script>
     function showTooltip(event, html) {
       const tooltip = document.getElementById('event-tooltip');
@@ -3610,7 +3610,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '21.5';
+        var updateNoticeVersion = '21.6';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -3618,7 +3618,7 @@
           if (localStorage.getItem(updateNoticeKey) === '1') return;
           var lang = localStorage.getItem('app_language') || 'zh-TW';
           if (updateBannerText) {
-            updateBannerText.textContent = lang === 'en' ? 'Update 2021-2024 Buddha live teachings' : '更新21-24年佛陀直播开示';
+            updateBannerText.textContent = lang === 'en' ? 'Update 20260520 Manjushri auspicious day live teaching' : '更新20260520文殊菩萨吉祥日直播开示';
           }
           if (document.getElementById('update-banner-btn-text')) {
             document.getElementById('update-banner-btn-text').textContent = lang === 'en' ? 'Update' : '更新';
@@ -3633,7 +3633,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=21.5').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=21.6').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
