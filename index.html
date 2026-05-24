@@ -3768,7 +3768,7 @@
           const sEvent = (window.specialEvents && Array.isArray(window.specialEvents)) ? window.specialEvents.find(e => e.date === dateString) : null;
           const globalFests = typeof getGlobalFestivals === 'function' ? getGlobalFestivals(year, month + 1, day) : [];
           const hasGlobalFest = globalFests.length > 0;
-          const isLiveDharmaDay = (year === 2026 && ((month === 3 && day === 6) || (month === 4 && day === 20)));
+          const isLiveDharmaDay = (year === 2026 && ((month === 3 && day === 6) || (month === 4 && (day === 20 || day === 24))));
 
           cell.className = 'day-cell relative flex flex-col items-center justify-start min-h-[75px] py-1 rounded-xl cursor-pointer transition-all duration-200 active:scale-95 select-none group';
           if (isLiveDharmaDay) {
