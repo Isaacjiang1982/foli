@@ -1,6 +1,10 @@
 
 const live_downloads = [
     {
+        "title": "20260524 释迦佛圣诞日直播开示",
+        "url1": "https://e.pcloud.link/publink/show?code=XZVDhrZCtyyXwv0evLVHUzS4u7MB8vdE5TV"
+    },
+    {
         "title": "20260520 文殊菩萨吉祥日直播开示",
         "url1": "https://e.pcloud.link/publink/show?code=XZH44rZWp5mpKgxIIurgxITE3vqbQNEAq07"
     },
