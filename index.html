@@ -35,7 +35,7 @@
   <!-- Load AI Chat -->
   <script src="ai_chat.js?v=21.0"></script>
   <script src="events_data.js?v=21.0"></script>
-  <script src="live_downloads_data.js?v=21.7"></script>
+  <script src="live_downloads_data.js?v=21.8"></script>
   <script>
     function showTooltip(event, html) {
       const tooltip = document.getElementById('event-tooltip');
@@ -3610,7 +3610,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '21.7';
+        var updateNoticeVersion = '21.8';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -3618,7 +3618,7 @@
           if (localStorage.getItem(updateNoticeKey) === '1') return;
           var lang = localStorage.getItem('app_language') || 'zh-TW';
           if (updateBannerText) {
-            updateBannerText.textContent = lang === 'en' ? 'Update 20260524 Shakyamuni Buddha birthday live teaching' : '更新20260524释迦佛圣诞日直播开示';
+            updateBannerText.textContent = lang === 'en' ? 'Update 20260529 Buddha memorial day live teaching' : '更新20260529佛难纪念日直播开示';
           }
           if (document.getElementById('update-banner-btn-text')) {
             document.getElementById('update-banner-btn-text').textContent = lang === 'en' ? 'Update' : '更新';
@@ -3633,7 +3633,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=21.7').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=21.8').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
@@ -3768,7 +3768,7 @@
           const sEvent = (window.specialEvents && Array.isArray(window.specialEvents)) ? window.specialEvents.find(e => e.date === dateString) : null;
           const globalFests = typeof getGlobalFestivals === 'function' ? getGlobalFestivals(year, month + 1, day) : [];
           const hasGlobalFest = globalFests.length > 0;
-          const isLiveDharmaDay = (year === 2026 && ((month === 3 && day === 6) || (month === 4 && (day === 20 || day === 24))));
+          const isLiveDharmaDay = (year === 2026 && ((month === 3 && day === 6) || (month === 4 && (day === 20 || day === 24 || day === 29))));
 
           cell.className = 'day-cell relative flex flex-col items-center justify-start min-h-[75px] py-1 rounded-xl cursor-pointer transition-all duration-200 active:scale-95 select-none group';
           if (isLiveDharmaDay) {

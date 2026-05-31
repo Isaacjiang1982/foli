@@ -1,4 +1,4 @@
-const CACHE_NAME = 'foli-cache-v21.7';
+const CACHE_NAME = 'foli-cache-v21.8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -17,7 +17,7 @@ const ASSETS_TO_CACHE = [
   './audio_data_v13.js?v=21.2',
   './ai_chat.js?v=21.0',
   './events_data.js?v=21.0',
-  './live_downloads_data.js?v=21.7',
+  './live_downloads_data.js?v=21.8',
   'https://cdn.tailwindcss.com'
 ];
 
