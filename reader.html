@@ -4,7 +4,12 @@
   <meta charset="UTF-8" />
   <title>閱讀開示</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="tailwindcss.js?v=22.0"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    if (!window.tailwind) {
+      document.write('<script src="tailwindcss.js?v=22.1"><\/script>');
+    }
+  </script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Serif SC", serif; }
     .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
@@ -552,7 +557,7 @@
       };
       document.body.appendChild(b);
     }
-    navigator.serviceWorker.register('/sw-v2.js?v=22.0').then(function(r) {
+    navigator.serviceWorker.register('/sw-v2.js?v=22.1').then(function(r) {
       reg = r;
       if (r.waiting && navigator.serviceWorker.controller) showReaderUpdateBanner();
       r.onupdatefound = function() {
