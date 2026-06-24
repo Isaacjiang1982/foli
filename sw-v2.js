@@ -1,24 +1,26 @@
-const CACHE_NAME = 'foli-cache-v21.8';
+const CACHE_NAME = 'foli-cache-v22.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './index.html?v=21.0',
+  './index.html?v=22.0',
+  './tailwindcss.js?v=22.0',
   './flag.png',
-  './reader.html?v=21.0',
+  './reader.html?v=22.0',
   './add_event.html?v=21.0',
+  './announcement.html',
   './manifest.json?v=21.0',
   './icons/icon-512.png',
   './i18n.js?v=21.0',
   './lunar.js?v=21.0',
   './sutras_data.js?v=21.0',
+  './search_data.js?v=22.0',
   './recipe_data.js?v=21.0',
   './diet_logic.js?v=21.0',
   './video_data.js?v=21.4',
   './audio_data_v13.js?v=21.2',
-  './ai_chat.js?v=21.0',
+  './ai_chat.js?v=21.1',
   './events_data.js?v=21.0',
-  './live_downloads_data.js?v=21.8',
-  'https://cdn.tailwindcss.com'
+  './live_downloads_data.js?v=21.8'
 ];
 
 // Install Event: Cache Core Assets (per-item so one 404 doesn't block activate)
