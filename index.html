@@ -790,7 +790,7 @@
 
 <!-- 更新提醒橫幅（發現新版本時顯示） -->
 <div id="update-banner" class="fixed left-4 right-4 bottom-20 lg:bottom-6 z-[45] hidden flex items-center justify-between gap-3 px-4 py-3 rounded-2xl shadow-lg border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-300" style="display: none;">
-  <span class="text-sm font-medium text-[#5c4033] flex-1" id="update-banner-text">支持离线搜索和文字浏览</span>
+  <span class="text-sm font-medium text-[#5c4033] flex-1" id="update-banner-text">修复搜索后打开文档错误</span>
   <button type="button" id="update-banner-btn" class="shrink-0 px-4 py-2 rounded-xl bg-[#b35c1e] text-white text-sm font-bold shadow-md hover:bg-[#9a4f1a] active:scale-95 transition-all">
     <span id="update-banner-btn-text">更新</span>
   </button>
@@ -1609,10 +1609,24 @@
   }
 
   function openReader(id) {
-      // Navigate to reader with ID
-      // If we are in local file system, we might need to handle the path carefully
-      // But reader.html expects ?file=...
-      // We can pass the ID as the file param, and update reader.html to look it up in SEARCH_DATA
+      // Pass only the selected document to the reader. This avoids parsing the
+      // full 15 MB search index again on memory-constrained mobile browsers.
+      try {
+          const item = getSearchDataset().find(entry => entry.id === id);
+          if (item) {
+              let content = item.content;
+              if (content && typeof content === 'object' && content.value) content = content.value;
+              if (typeof content === 'string') {
+                  sessionStorage.setItem('foli_reader_document', JSON.stringify({
+                      id: item.id,
+                      title: item.title || String(item.id || '').replace(/\.[^/.]+$/, ''),
+                      content
+                  }));
+              }
+          }
+      } catch (error) {
+          console.warn('Unable to cache selected document for reader', error);
+      }
       
       let url = `reader.html?file=${encodeURIComponent(id)}`;
       
@@ -3615,7 +3629,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '22.1';
+        var updateNoticeVersion = '22.2';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -3623,7 +3637,7 @@
           if (localStorage.getItem(updateNoticeKey) === '1') return;
           var lang = localStorage.getItem('app_language') || 'zh-TW';
           if (updateBannerText) {
-            updateBannerText.textContent = lang === 'en' ? 'Offline search and text reading support' : '支持离线搜索和文字浏览';
+            updateBannerText.textContent = lang === 'en' ? 'Fix opening documents from search' : '修复搜索后打开文档错误';
           }
           if (document.getElementById('update-banner-btn-text')) {
             document.getElementById('update-banner-btn-text').textContent = lang === 'en' ? 'Update' : '更新';
@@ -3638,7 +3652,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=22.1').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=22.2').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
