@@ -1384,7 +1384,7 @@
     isSearchDataLoading = true;
     return new Promise((resolve, reject) => {
          const script = document.createElement('script');
-         script.src = 'search_data.js?v=22.0';
+         script.src = 'search_data.js?v=22.3';
          script.onload = () => {
             isSearchDataLoading = false;
             resolve();
@@ -3629,7 +3629,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '22.2';
+        var updateNoticeVersion = '22.4';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -3637,7 +3637,7 @@
           if (localStorage.getItem(updateNoticeKey) === '1') return;
           var lang = localStorage.getItem('app_language') || 'zh-TW';
           if (updateBannerText) {
-            updateBannerText.textContent = lang === 'en' ? 'Fix opening documents from search' : '修复搜索后打开文档错误';
+            updateBannerText.textContent = lang === 'en' ? 'Update reader style' : '更新佛经阅读页面';
           }
           if (document.getElementById('update-banner-btn-text')) {
             document.getElementById('update-banner-btn-text').textContent = lang === 'en' ? 'Update' : '更新';
@@ -3652,7 +3652,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=22.2').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=22.4').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
