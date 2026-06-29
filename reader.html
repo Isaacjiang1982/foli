@@ -851,7 +851,7 @@
       };
       document.body.appendChild(b);
     }
-    navigator.serviceWorker.register('/sw-v2.js?v=22.7').then(function(r) {
+    navigator.serviceWorker.register('/sw-v2.js?v=22.8').then(function(r) {
       reg = r;
       if (r.waiting && navigator.serviceWorker.controller) showReaderUpdateBanner();
       r.onupdatefound = function() {
