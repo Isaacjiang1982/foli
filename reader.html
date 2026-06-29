@@ -19,9 +19,11 @@
       --reader-accent: #9a541c;
       --reader-gold: #d9a441;
       --reader-shadow: 0 24px 70px rgba(83, 54, 24, 0.13);
+      --reader-font-family: "I.Ming", "SimSun", "Songti SC", "STSong", "Noto Serif SC", serif;
+      --reader-font-tracking: 0.01em;
     }
     body {
-      font-family: "Noto Serif SC", "Songti SC", "STSong", "PingFang SC", -apple-system, BlinkMacSystemFont, serif;
+      font-family: var(--reader-font-family);
       color: var(--reader-text);
       background:
         radial-gradient(ellipse at 82% -8%, rgba(255,255,238,.82) 0%, rgba(245,218,145,.34) 36%, transparent 66%),
@@ -52,6 +54,18 @@
       box-shadow: 0 10px 30px rgba(84, 55, 22, 0.08);
     }
     .reader-night .reader-header { background: rgba(22, 18, 15, 0.75); }
+    body.reader-font-songke {
+      --reader-font-family: "I.Ming", "SimSun", "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
+      --reader-font-tracking: 0.012em;
+    }
+    body.reader-font-script {
+      --reader-font-family: "Kaiti SC", "STKaiti", "KaiTi", "FangSong", "FangSong_GB2312", "Songti SC", serif;
+      --reader-font-tracking: 0.035em;
+    }
+    body.reader-font-system {
+      --reader-font-family: "Noto Serif SC", "Songti SC", "STSong", "PingFang SC", -apple-system, BlinkMacSystemFont, serif;
+      --reader-font-tracking: 0;
+    }
     .reader-icon-btn {
       width: 2.35rem;
       height: 2.35rem;
@@ -86,7 +100,7 @@
       color: var(--reader-text);
       text-align: justify;
       white-space: pre-wrap;
-      letter-spacing: 0;
+      letter-spacing: var(--reader-font-tracking);
       word-break: break-word;
       overflow-wrap: anywhere;
     }
@@ -114,6 +128,11 @@
     }
     .reader-night .reader-field { background: rgba(255,255,255,.06); }
     .mode-btn.active {
+      background: var(--reader-accent);
+      color: white;
+      border-color: transparent;
+    }
+    .font-btn.active {
       background: var(--reader-accent);
       color: white;
       border-color: transparent;
@@ -231,6 +250,17 @@
 
             <div>
                 <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs text-[var(--reader-muted)] font-bold uppercase tracking-wider">字体风格</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="font-songke-btn" onclick="setReaderFontStyle('songke')" class="font-btn reader-field py-2 rounded-xl text-sm font-medium transition-all active:scale-95">宋刻</button>
+                    <button id="font-script-btn" onclick="setReaderFontStyle('script')" class="font-btn reader-field py-2 rounded-xl text-sm font-medium transition-all active:scale-95">写经</button>
+                    <button id="font-system-btn" onclick="setReaderFontStyle('system')" class="font-btn reader-field py-2 rounded-xl text-sm font-medium transition-all active:scale-95">系统</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
                     <span class="text-xs text-[var(--reader-muted)] font-bold uppercase tracking-wider">阅读模式</span>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
@@ -328,7 +358,24 @@
       if (nightBtn) nightBtn.classList.toggle('active', theme === 'night');
   }
 
+  function setReaderFontStyle(style) {
+      const selected = ['songke', 'script', 'system'].includes(style) ? style : 'songke';
+      document.body.classList.remove('reader-font-songke', 'reader-font-script', 'reader-font-system');
+      document.body.classList.add(`reader-font-${selected}`);
+      localStorage.setItem('reader_font_style', selected);
+      updateFontStyleButtons();
+  }
+
+  function updateFontStyleButtons() {
+      const style = localStorage.getItem('reader_font_style') || 'songke';
+      ['songke', 'script', 'system'].forEach(name => {
+          const btn = document.getElementById(`font-${name}-btn`);
+          if (btn) btn.classList.toggle('active', name === style);
+      });
+  }
+
   function applyReaderPreferences() {
+      setReaderFontStyle(localStorage.getItem('reader_font_style') || 'songke');
       setReaderTheme(localStorage.getItem('reader_theme') === 'night' ? 'night' : 'day');
       const savedSize = localStorage.getItem('reader_font_size') || 18;
       updateFontSize(savedSize, false);
@@ -460,6 +507,7 @@
           if (lineHeightSlider) lineHeightSlider.value = currentLineHeight;
           updateLineHeight(currentLineHeight, false);
           updateThemeButtons();
+          updateFontStyleButtons();
       } else {
           modal.style.display = 'none';
       }
@@ -803,7 +851,7 @@
       };
       document.body.appendChild(b);
     }
-    navigator.serviceWorker.register('/sw-v2.js?v=22.4').then(function(r) {
+    navigator.serviceWorker.register('/sw-v2.js?v=22.7').then(function(r) {
       reg = r;
       if (r.waiting && navigator.serviceWorker.controller) showReaderUpdateBanner();
       r.onupdatefound = function() {
