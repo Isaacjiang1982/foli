@@ -1,12 +1,12 @@
-const CACHE_NAME = 'foli-cache-v22.8';
+const CACHE_NAME = 'foli-cache-v23.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './index.html?v=22.8',
-  './pdf_viewer.html?v=22.8',
+  './index.html?v=23.0',
+  './pdf_viewer.html?v=23.0',
   './tailwindcss.js?v=22.1',
   './flag.png',
-  './reader.html?v=22.8',
+  './reader.html?v=23.0',
   './add_event.html?v=21.0',
   './announcement.html',
   './manifest.json?v=21.0',
