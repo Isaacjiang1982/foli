@@ -2043,7 +2043,7 @@
   }
 
   const WEATHER_CACHE_KEY = 'foli_today_weather_cache_v1';
-  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v2';
+  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v3';
   let dayInfoRenderToken = 0;
 
   function getLocalDateKey(date = new Date()) {
@@ -2372,6 +2372,130 @@
       return { ruUa, usIran };
   }
 
+  function getChinaDisasterLabel() {
+      if (currentLang === 'en') return 'China disaster';
+      if (currentLang === 'zh-TW') return '中國災害';
+      return '中国灾害';
+  }
+
+  function getSourceName(domain) {
+      const normalized = String(domain || '').replace(/^www\./, '').toLowerCase();
+      const names = {
+          'apnews.com': 'AP',
+          'reuters.com': 'Reuters',
+          'bbc.com': 'BBC',
+          'theguardian.com': 'The Guardian',
+          'ft.com': 'Financial Times',
+          'aljazeera.com': 'Al Jazeera',
+          'straitstimes.com': 'Straits Times',
+          'japantimes.co.jp': 'Japan Times',
+          'taiwannews.com.tw': 'Taiwan News',
+          'scmp.com': 'SCMP',
+          'economictimes.com': 'Economic Times',
+          'people.com': 'People',
+          'xinhuanet.com': '新华网',
+          'news.cn': '新华网',
+          'news.cctv.com': '央视新闻',
+          'cctv.com': '央视新闻',
+          'chinanews.com.cn': '中新网',
+          'weather.com.cn': '中国天气',
+          'cma.gov.cn': '中国气象局',
+          'mem.gov.cn': '应急管理部',
+          'mca.gov.cn': '民政部',
+          'people.com.cn': '人民网',
+          'gxnews.com.cn': '广西新闻网',
+          'hubeidaily.net': '湖北日报',
+          'ctdsb.net': '极目新闻',
+          'hbtv.com.cn': '湖北广电'
+      };
+      return names[normalized] || normalized || 'news';
+  }
+
+  function isPreferredChinaDisasterSource(domain) {
+      const normalized = String(domain || '').replace(/^www\./, '').toLowerCase();
+      const preferredDomains = [
+          'apnews.com',
+          'reuters.com',
+          'bbc.com',
+          'theguardian.com',
+          'ft.com',
+          'aljazeera.com',
+          'straitstimes.com',
+          'japantimes.co.jp',
+          'taiwannews.com.tw',
+          'scmp.com',
+          'economictimes.com',
+          'people.com',
+          'xinhuanet.com',
+          'news.cn',
+          'news.cctv.com',
+          'cctv.com',
+          'chinanews.com.cn',
+          'weather.com.cn',
+          'cma.gov.cn',
+          'mem.gov.cn',
+          'mca.gov.cn',
+          'people.com.cn',
+          'gxnews.com.cn',
+          'hubeidaily.net',
+          'ctdsb.net',
+          'hbtv.com.cn'
+      ];
+      return preferredDomains.some(domainItem => normalized === domainItem || normalized.endsWith(`.${domainItem}`));
+  }
+
+  function buildGdeltDocUrl(query) {
+      const params = new URLSearchParams({
+          query,
+          mode: 'ArtList',
+          format: 'json',
+          sort: 'DateDesc',
+          maxrecords: '8',
+          timespan: '7d'
+      });
+      return `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
+  }
+
+  async function fetchGdeltArticles(query) {
+      const resp = await fetch(buildGdeltDocUrl(query));
+      if (!resp.ok) throw new Error(`gdelt_api_${resp.status}`);
+      const data = await resp.json();
+      return Array.isArray(data && data.articles) ? data.articles : [];
+  }
+
+  async function fetchChinaDisasterHeadlines() {
+      const queries = [
+          '(China OR Guangxi OR Hubei OR Zhejiang OR Shanghai) (flood OR floods OR flooding OR tornado OR typhoon OR storm OR landslide OR evacuation) sourcelang:English',
+          '("Guangxi" OR "Nanning" OR "Hengzhou") (flood OR floods OR flooding OR typhoon OR dam) sourcelang:English',
+          '("Hubei" OR "Huanggang" OR "Wuhan") (tornado OR twister OR "severe storm" OR "strong winds") sourcelang:English',
+          '("广西" OR "桂林" OR "柳州" OR "梧州" OR "河池" OR "百色") (洪水 OR 洪灾 OR 内涝 OR 暴雨 OR 山洪) sourcelang:Chinese',
+          '("湖北" OR "武汉" OR "宜昌" OR "襄阳" OR "荆州" OR "孝感" OR "黄冈") ("龙卷风" OR 强对流 OR 大风 OR 冰雹) sourcelang:Chinese',
+          '("中国" OR "华南" OR "华中" OR "长江") (洪水 OR 洪灾 OR 暴雨 OR 山洪 OR "龙卷风" OR 强对流) sourcelang:Chinese'
+      ];
+
+      const results = await Promise.allSettled(queries.map(query => fetchGdeltArticles(query)));
+      const seen = new Set();
+      const items = [];
+
+      results.forEach(result => {
+          if (result.status !== 'fulfilled') return;
+          result.value.forEach(article => {
+              const title = String((article && article.title) || '').trim();
+              const url = String((article && article.url) || '').trim();
+              const domain = String((article && article.domain) || '').trim();
+              if (!title || !url || !domain) return;
+              if (!/(洪水|洪灾|内涝|暴雨|山洪|龙卷风|强对流|大风|冰雹|flood|flooding|tornado|twister|typhoon|storm|landslide|evacuat)/i.test(title)) return;
+              if (!isPreferredChinaDisasterSource(domain)) return;
+              const key = `${domain}|${title}`;
+              if (seen.has(key)) return;
+              seen.add(key);
+              items.push({ title, domain, url });
+          });
+      });
+
+      return items.slice(0, 2);
+  }
+
   async function fetchMajorDisasterSummary() {
       const now = Date.now();
       const todayKey = getLocalDateKey();
@@ -2381,7 +2505,7 @@
       }
 
       const texts = getDisasterTextSet();
-      const [eqResult, naturalResult, warPandemicResult] = await Promise.allSettled([
+      const [eqResult, naturalResult, warPandemicResult, chinaDisasterResult] = await Promise.allSettled([
           fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_day.geojson').then(r => {
               if (!r.ok) throw new Error(`eq_api_${r.status}`);
               return r.json();
@@ -2393,7 +2517,8 @@
           fetch('https://www.reddit.com/r/worldnews/new.json?limit=50&raw_json=1').then(r => {
               if (!r.ok) throw new Error(`reddit_api_${r.status}`);
               return r.json();
-          })
+          }),
+          fetchChinaDisasterHeadlines()
       ]);
 
       const summaryParts = [];
@@ -2424,6 +2549,13 @@
           if (geo.usIran) {
               summaryParts.push(`${t('disaster_us_iran')}：${truncateText(geo.usIran.title, 42)} [${geo.usIran.domain}]`);
           }
+      }
+
+      if (chinaDisasterResult.status === 'fulfilled' && Array.isArray(chinaDisasterResult.value) && chinaDisasterResult.value.length > 0) {
+          const headlineText = chinaDisasterResult.value
+              .map(item => `${truncateText(item.title, 30)} [${getSourceName(item.domain)}]`)
+              .join('、');
+          summaryParts.push(`${getChinaDisasterLabel()}：${headlineText}`);
       }
 
       const summary = summaryParts.join(texts.separator).trim();
@@ -3714,7 +3846,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '23.0';
+        var updateNoticeVersion = '23.1';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -3737,7 +3869,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=23.0').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=23.1').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
