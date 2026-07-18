@@ -1,8 +1,8 @@
-const CACHE_NAME = 'foli-cache-v23.8';
+const CACHE_NAME = 'foli-cache-v23.9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './index.html?v=23.8',
+  './index.html?v=23.9',
   './pdf_viewer.html?v=23.0',
   './tailwindcss.js?v=22.1',
   './flag.png',
@@ -22,7 +22,7 @@ const ASSETS_TO_CACHE = [
   './ai_chat.js?v=21.1',
   './events_data.js?v=21.0',
   './live_downloads_data.js?v=21.8',
-  './buddha_poems_data.js?v=23.8'
+  './buddha_poems_data.js?v=23.9'
 ];
 
 // Install Event: Cache Core Assets (per-item so one 404 doesn't block activate)

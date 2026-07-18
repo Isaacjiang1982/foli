@@ -41,7 +41,7 @@
   <script src="ai_chat.js?v=21.1"></script>
   <script src="events_data.js?v=21.0"></script>
   <script src="live_downloads_data.js?v=21.8"></script>
-  <script src="buddha_poems_data.js?v=23.8"></script>
+  <script src="buddha_poems_data.js?v=23.9"></script>
   <script>
     function showTooltip(event, html) {
       const tooltip = document.getElementById('event-tooltip');
@@ -2080,7 +2080,7 @@
   }
 
   const WEATHER_CACHE_KEY = 'foli_today_weather_cache_v1';
-  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v3';
+  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v4';
   let dayInfoRenderToken = 0;
 
   function getLocalDateKey(date = new Date()) {
@@ -2487,7 +2487,7 @@
           mode: 'ArtList',
           format: 'json',
           sort: 'DateDesc',
-          maxrecords: '8',
+          maxrecords: '10',
           timespan: '7d'
       });
       return `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
@@ -2500,20 +2500,25 @@
       return Array.isArray(data && data.articles) ? data.articles : [];
   }
 
-  async function fetchChinaDisasterHeadlines() {
-      const queries = [
-          '(China OR Guangxi OR Hubei OR Zhejiang OR Shanghai) (flood OR floods OR flooding OR tornado OR typhoon OR storm OR landslide OR evacuation) sourcelang:English',
-          '("Guangxi" OR "Nanning" OR "Hengzhou") (flood OR floods OR flooding OR typhoon OR dam) sourcelang:English',
-          '("Hubei" OR "Huanggang" OR "Wuhan") (tornado OR twister OR "severe storm" OR "strong winds") sourcelang:English',
-          '("广西" OR "桂林" OR "柳州" OR "梧州" OR "河池" OR "百色") (洪水 OR 洪灾 OR 内涝 OR 暴雨 OR 山洪) sourcelang:Chinese',
-          '("湖北" OR "武汉" OR "宜昌" OR "襄阳" OR "荆州" OR "孝感" OR "黄冈") ("龙卷风" OR 强对流 OR 大风 OR 冰雹) sourcelang:Chinese',
-          '("中国" OR "华南" OR "华中" OR "长江") (洪水 OR 洪灾 OR 暴雨 OR 山洪 OR "龙卷风" OR 强对流) sourcelang:Chinese'
-      ];
+  function getDisasterTypeLabel(title) {
+      const text = String(title || '').toLowerCase();
+      const labels = currentLang === 'en'
+          ? { flood: 'Flood', tornado: 'Tornado', fire: 'Fire', storm: 'Storm', earthquake: 'Earthquake', landslide: 'Landslide', other: 'Disaster' }
+          : currentLang === 'zh-TW'
+              ? { flood: '洪災', tornado: '龍捲風', fire: '火災', storm: '風暴', earthquake: '地震', landslide: '山崩', other: '災害' }
+              : { flood: '洪灾', tornado: '龙卷风', fire: '火灾', storm: '风暴', earthquake: '地震', landslide: '山体滑坡', other: '灾害' };
+      if (/(flood|flooding|floodwaters|洪水|洪灾|洪災|内涝|內澇|暴雨|山洪)/i.test(text)) return labels.flood;
+      if (/(tornado|twister|龙卷风|龍捲風)/i.test(text)) return labels.tornado;
+      if (/(wildfire|forest fire|wild fire|fire|火灾|火災|山火|森林火灾|森林火災)/i.test(text)) return labels.fire;
+      if (/(storm|typhoon|hurricane|cyclone|thunderstorm|强对流|強對流|大风|大風|冰雹|颱風|台风)/i.test(text)) return labels.storm;
+      if (/(earthquake|地震)/i.test(text)) return labels.earthquake;
+      if (/(landslide|mudslide|山体滑坡|山體滑坡|山洪)/i.test(text)) return labels.landslide;
+      return labels.other;
+  }
 
-      const results = await Promise.allSettled(queries.map(query => fetchGdeltArticles(query)));
+  function normalizeDisasterArticles(results, region) {
       const seen = new Set();
       const items = [];
-
       results.forEach(result => {
           if (result.status !== 'fulfilled') return;
           result.value.forEach(article => {
@@ -2521,28 +2526,72 @@
               const url = String((article && article.url) || '').trim();
               const domain = String((article && article.domain) || '').trim();
               if (!title || !url || !domain) return;
-              if (!/(洪水|洪灾|内涝|暴雨|山洪|龙卷风|强对流|大风|冰雹|flood|flooding|tornado|twister|typhoon|storm|landslide|evacuat)/i.test(title)) return;
-              if (!isPreferredChinaDisasterSource(domain)) return;
-              const key = `${domain}|${title}`;
+              const key = url || `${domain}|${title}`;
               if (seen.has(key)) return;
               seen.add(key);
-              items.push({ title, domain, url });
+              items.push({
+                  title,
+                  url,
+                  domain,
+                  source: getSourceName(domain),
+                  type: getDisasterTypeLabel(title),
+                  region,
+                  date: String((article && (article.seendate || article.published)) || '')
+              });
           });
       });
+      return items;
+  }
 
-      return items.slice(0, 2);
+  async function fetchDisasterHeadlines(queries, region, sourceFilter) {
+      const results = await Promise.allSettled(queries.map(query => fetchGdeltArticles(query)));
+      const filtered = results.map(result => {
+          if (result.status !== 'fulfilled') return result;
+          return {
+              status: 'fulfilled',
+              value: result.value.filter(article => {
+                  const title = String((article && article.title) || '');
+                  const domain = String((article && article.domain) || '');
+                  const isDisaster = /(flood|flooding|floodwaters|tornado|twister|wildfire|forest fire|wild fire|fire|earthquake|landslide|mudslide|typhoon|hurricane|cyclone|storm|洪水|洪灾|洪災|内涝|內澇|暴雨|山洪|龙卷风|龍捲風|火灾|火災|山火|地震|山体滑坡|山體滑坡|台风|台風|强对流|強對流|大风|大風|冰雹)/i.test(title);
+                  return isDisaster && (!sourceFilter || sourceFilter(domain));
+              })
+          };
+      });
+      return normalizeDisasterArticles(filtered, region);
+  }
+
+  async function fetchWorldDisasterHeadlines() {
+      const queries = [
+          '(flood OR flooding OR tornado OR twister OR wildfire OR "forest fire" OR earthquake OR landslide) (evacuation OR rescue OR warning OR damage OR disaster) sourcelang:English',
+          '(typhoon OR hurricane OR cyclone OR severe storm OR wildfire) (evacuation OR emergency OR damage OR rescue) sourcelang:English',
+          '(flood OR tornado OR wildfire OR earthquake) (Japan OR India OR Europe OR America OR Australia OR Africa) sourcelang:English'
+      ];
+      return fetchDisasterHeadlines(queries, 'world', isPreferredChinaDisasterSource);
+  }
+
+  async function fetchChinaDisasterHeadlines() {
+      const queries = [
+          '(China OR Guangxi OR Hubei OR Zhejiang OR Shanghai) (flood OR floods OR flooding OR tornado OR typhoon OR storm OR landslide OR wildfire OR fire OR evacuation) sourcelang:English',
+          '("Guangxi" OR "Nanning" OR "Hengzhou") (flood OR floods OR flooding OR typhoon OR dam OR wildfire OR fire) sourcelang:English',
+          '("Hubei" OR "Huanggang" OR "Wuhan") (tornado OR twister OR "severe storm" OR "strong winds") sourcelang:English',
+          '("广西" OR "桂林" OR "柳州" OR "梧州" OR "河池" OR "百色") (洪水 OR 洪灾 OR 内涝 OR 暴雨 OR 山洪 OR 火灾 OR 山火) sourcelang:Chinese',
+          '("湖北" OR "武汉" OR "宜昌" OR "襄阳" OR "荆州" OR "孝感" OR "黄冈") ("龙卷风" OR 强对流 OR 大风 OR 冰雹 OR 火灾) sourcelang:Chinese',
+          '("中国" OR "华南" OR "华中" OR "长江") (洪水 OR 洪灾 OR 暴雨 OR 山洪 OR "龙卷风" OR 强对流 OR 火灾 OR 山火) sourcelang:Chinese'
+      ];
+      const items = await fetchDisasterHeadlines(queries, 'china', isPreferredChinaDisasterSource);
+      return items.slice(0, 8);
   }
 
   async function fetchMajorDisasterSummary() {
       const now = Date.now();
       const todayKey = getLocalDateKey();
       const cache = readDisasterCache();
-      if (cache.dateKey === todayKey && typeof cache.summary === 'string' && (now - (cache.fetchedAt || 0) < 30 * 60 * 1000)) {
-          return { summary: cache.summary };
+      if (cache.dateKey === todayKey && typeof cache.summary === 'string' && Array.isArray(cache.articles) && (now - (cache.fetchedAt || 0) < 30 * 60 * 1000)) {
+          return { summary: cache.summary, articles: cache.articles };
       }
 
       const texts = getDisasterTextSet();
-      const [eqResult, naturalResult, warPandemicResult, chinaDisasterResult] = await Promise.allSettled([
+      const [eqResult, naturalResult, warPandemicResult, worldDisasterResult, chinaDisasterResult] = await Promise.allSettled([
           fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_day.geojson').then(r => {
               if (!r.ok) throw new Error(`eq_api_${r.status}`);
               return r.json();
@@ -2555,6 +2604,7 @@
               if (!r.ok) throw new Error(`reddit_api_${r.status}`);
               return r.json();
           }),
+          fetchWorldDisasterHeadlines(),
           fetchChinaDisasterHeadlines()
       ]);
 
@@ -2596,13 +2646,47 @@
       }
 
       const summary = summaryParts.join(texts.separator).trim();
+      const worldArticles = worldDisasterResult.status === 'fulfilled' && Array.isArray(worldDisasterResult.value) ? worldDisasterResult.value : [];
+      const chinaArticles = chinaDisasterResult.status === 'fulfilled' && Array.isArray(chinaDisasterResult.value) ? chinaDisasterResult.value : [];
+      const articles = [...worldArticles, ...chinaArticles].slice(0, 16);
+
+      if (!summary && articles.length === 0 && typeof cache.summary === 'string') {
+          return { summary: cache.summary, articles: Array.isArray(cache.articles) ? cache.articles : [], stale: true };
+      }
 
       localStorage.setItem(DISASTER_CACHE_KEY, JSON.stringify({
           dateKey: todayKey,
           fetchedAt: now,
-          summary
+          summary,
+          articles
       }));
-      return { summary };
+      return { summary, articles };
+  }
+
+  function renderDisasterReportItems(items, region) {
+      const reports = (Array.isArray(items) ? items : []).filter(item => item && item.region === region).slice(0, 6);
+      if (!reports.length) return `<div class="text-xs text-stone-500 py-1">${escapeHtml(t('disaster_none'))}</div>`;
+      return reports.map(item => `
+          <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="block py-2 border-b border-rose-100 last:border-b-0 hover:bg-white/60 transition-colors">
+              <div class="flex items-start gap-2">
+                  <span class="shrink-0 mt-0.5 px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] leading-tight">${escapeHtml(item.type)}</span>
+                  <span class="text-xs leading-snug text-stone-800">${escapeHtml(truncateText(item.title, 112))}</span>
+              </div>
+              <div class="mt-1 text-[10px] text-stone-500">${escapeHtml(t('disaster_source'))}：${escapeHtml(item.source || getSourceName(item.domain))}</div>
+          </a>
+      `).join('');
+  }
+
+  function toggleTodayDisaster() {
+      const detailsEl = document.getElementById('today-disaster-details');
+      const toggleEl = document.getElementById('today-disaster-toggle');
+      const arrowEl = document.getElementById('today-disaster-arrow');
+      if (!detailsEl || !toggleEl) return;
+      const isExpanded = !detailsEl.classList.contains('hidden');
+      detailsEl.classList.toggle('hidden', isExpanded);
+      toggleEl.setAttribute('aria-expanded', String(!isExpanded));
+      toggleEl.setAttribute('aria-label', t(isExpanded ? 'disaster_expand' : 'disaster_collapse'));
+      if (arrowEl) arrowEl.textContent = isExpanded ? '⌄' : '⌃';
   }
 
   async function renderTodayDisaster(isToday, renderToken) {
@@ -2612,15 +2696,29 @@
       try {
           const disaster = await fetchMajorDisasterSummary();
           if (renderToken !== dayInfoRenderToken) return;
-          if (!disaster || !disaster.summary) {
-              disasterEl.textContent = t('disaster_none');
-              return;
+          const summary = disaster && disaster.summary ? disaster.summary : t('disaster_none');
+          const articles = disaster && Array.isArray(disaster.articles) ? disaster.articles : [];
+          disasterEl.textContent = articles.length ? `${articles.length} ${currentLang === 'en' ? 'reports' : '条报道'}` : summary;
+          const reportsEl = document.getElementById('today-disaster-reports');
+          const majorEl = document.getElementById('today-major-disaster-summary');
+          if (reportsEl) {
+              reportsEl.innerHTML = `
+                  <div class="text-xs font-semibold text-rose-900 mb-1">${escapeHtml(t('disaster_reports'))}</div>
+                  <div class="rounded-lg bg-white/50 px-2 divide-y divide-rose-100">
+                      <div class="pt-1 pb-1 text-[11px] font-medium text-stone-600">${escapeHtml(t('disaster_world'))}</div>
+                      ${renderDisasterReportItems(articles, 'world')}
+                      <div class="pt-2 pb-1 text-[11px] font-medium text-stone-600">${escapeHtml(t('disaster_china'))}</div>
+                      ${renderDisasterReportItems(articles, 'china')}
+                  </div>
+              `;
           }
-          disasterEl.textContent = disaster.summary;
+          if (majorEl) majorEl.textContent = summary || t('disaster_none');
       } catch (err) {
           console.error('Disaster fetch failed', err);
           if (renderToken !== dayInfoRenderToken) return;
           disasterEl.textContent = t('disaster_unavailable');
+          const majorEl = document.getElementById('today-major-disaster-summary');
+          if (majorEl) majorEl.textContent = t('disaster_unavailable');
       }
   }
 
@@ -2779,10 +2877,20 @@
             <!-- Buddhist Info -->
             ${infoHtml}
             ${isToday ? `
-            <div class="mt-2 px-3 py-2 bg-rose-50/70 backdrop-blur-md rounded-xl border border-rose-100/70 shadow-sm flex items-start gap-2 text-xs text-rose-900">
-                 <span class="text-sm leading-none mt-0.5">🚨</span>
-                 <span class="font-semibold shrink-0">${t('disaster_today')}：</span>
-                 <span id="today-disaster-brief" class="leading-snug break-words overflow-hidden" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;">${t('disaster_loading')}</span>
+            <div class="mt-2 px-3 py-2 bg-rose-50/70 backdrop-blur-md rounded-xl border border-rose-100/70 shadow-sm text-xs text-rose-900">
+                 <button type="button" id="today-disaster-toggle" onclick="toggleTodayDisaster()" aria-expanded="false" aria-label="${t('disaster_expand')}" class="w-full flex items-start gap-2 text-left">
+                      <span class="text-sm leading-none mt-0.5">🚨</span>
+                      <span class="font-semibold shrink-0">${t('disaster_today')}：</span>
+                      <span id="today-disaster-brief" class="flex-1 leading-snug break-words">${t('disaster_loading')}</span>
+                      <span id="today-disaster-arrow" class="shrink-0 text-sm leading-none">⌄</span>
+                 </button>
+                 <div id="today-disaster-details" class="hidden mt-2 pt-2 border-t border-rose-200/70">
+                      <div id="today-disaster-reports">${t('disaster_loading')}</div>
+                      <div class="mt-3 pt-2 border-t border-rose-200/70">
+                           <div class="text-xs font-semibold text-rose-900">${t('disaster_major')}</div>
+                           <div id="today-major-disaster-summary" class="mt-1 text-xs leading-relaxed text-stone-700">${t('disaster_loading')}</div>
+                      </div>
+                 </div>
             </div>` : ''}
           `;
       
@@ -4097,7 +4205,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '23.8';
+        var updateNoticeVersion = '23.9';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -4120,7 +4228,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=23.8').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=23.9').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
