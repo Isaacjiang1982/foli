@@ -41,7 +41,7 @@
   <script src="ai_chat.js?v=21.1"></script>
   <script src="events_data.js?v=21.0"></script>
   <script src="live_downloads_data.js?v=21.8"></script>
-  <script src="buddha_poems_data.js?v=23.10"></script>
+  <script src="buddha_poems_data.js?v=23.12"></script>
   <script>
     function showTooltip(event, html) {
       const tooltip = document.getElementById('event-tooltip');
@@ -2080,7 +2080,7 @@
   }
 
   const WEATHER_CACHE_KEY = 'foli_today_weather_cache_v1';
-  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v4';
+  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v5';
   let dayInfoRenderToken = 0;
 
   function getLocalDateKey(date = new Date()) {
@@ -2443,9 +2443,15 @@
           'gxnews.com.cn': '广西新闻网',
           'hubeidaily.net': '湖北日报',
           'ctdsb.net': '极目新闻',
-          'hbtv.com.cn': '湖北广电'
+          'hbtv.com.cn': '湖北广电',
+          'gov.cn': '中国政府网',
+          'scio.gov.cn': '国务院新闻办',
+          'ln.gov.cn': '辽宁省政府',
+          'jl.gov.cn': '吉林省政府',
+          'hlj.gov.cn': '黑龙江省政府'
       };
-      return names[normalized] || normalized || 'news';
+      const matchedName = Object.entries(names).find(([domain]) => normalized === domain || normalized.endsWith(`.${domain}`));
+      return (matchedName && matchedName[1]) || normalized || 'news';
   }
 
   function isPreferredChinaDisasterSource(domain) {
@@ -2476,7 +2482,12 @@
           'gxnews.com.cn',
           'hubeidaily.net',
           'ctdsb.net',
-          'hbtv.com.cn'
+          'hbtv.com.cn',
+          'gov.cn',
+          'scio.gov.cn',
+          'ln.gov.cn',
+          'jl.gov.cn',
+          'hlj.gov.cn'
       ];
       return preferredDomains.some(domainItem => normalized === domainItem || normalized.endsWith(`.${domainItem}`));
   }
@@ -2543,7 +2554,7 @@
       return items;
   }
 
-  async function fetchDisasterHeadlines(queries, region, sourceFilter) {
+  async function fetchDisasterHeadlines(queries, region, sourceFilter, titlePattern) {
       const results = await Promise.allSettled(queries.map(query => fetchGdeltArticles(query)));
       const disasterOnly = results.map(result => {
           if (result.status !== 'fulfilled') return result;
@@ -2551,7 +2562,10 @@
               status: 'fulfilled',
               value: result.value.filter(article => {
                   const title = String((article && article.title) || '');
-                  return /(flood|flooding|floodwaters|tornado|twister|wildfire|forest fire|wild fire|fire|earthquake|landslide|mudslide|typhoon|hurricane|cyclone|storm|洪水|洪灾|洪災|内涝|內澇|暴雨|山洪|龙卷风|龍捲風|火灾|火災|山火|地震|山体滑坡|山體滑坡|台风|台風|强对流|強對流|大风|大風|冰雹)/i.test(title);
+                  const isTarget = titlePattern
+                      ? titlePattern.test(title)
+                      : /(flood|flooding|floodwaters|tornado|twister|wildfire|forest fire|wild fire|fire|earthquake|landslide|mudslide|typhoon|hurricane|cyclone|storm|洪水|洪灾|洪災|内涝|內澇|暴雨|山洪|龙卷风|龍捲風|火灾|火災|山火|地震|山体滑坡|山體滑坡|台风|台風|强对流|強對流|大风|大風|冰雹)/i.test(title);
+                  return isTarget;
               })
           };
       });
@@ -2585,10 +2599,23 @@
           '("Hubei" OR "Huanggang" OR "Wuhan") (tornado OR twister OR "severe storm" OR "strong winds") sourcelang:English',
           '("广西" OR "桂林" OR "柳州" OR "梧州" OR "河池" OR "百色") (洪水 OR 洪灾 OR 内涝 OR 暴雨 OR 山洪 OR 火灾 OR 山火) sourcelang:Chinese',
           '("湖北" OR "武汉" OR "宜昌" OR "襄阳" OR "荆州" OR "孝感" OR "黄冈") ("龙卷风" OR 强对流 OR 大风 OR 冰雹 OR 火灾) sourcelang:Chinese',
-          '("中国" OR "华南" OR "华中" OR "长江") (洪水 OR 洪灾 OR 暴雨 OR 山洪 OR "龙卷风" OR 强对流 OR 火灾 OR 山火) sourcelang:Chinese'
+          '("中国" OR "华南" OR "华中" OR "长江") (洪水 OR 洪灾 OR 暴雨 OR 山洪 OR "龙卷风" OR 强对流 OR 火灾 OR 山火) sourcelang:Chinese',
+          '("Northeast China" OR Liaoning OR Jilin OR Heilongjiang OR Shenyang OR Changchun OR Harbin OR Songhua) (flood OR flooding OR rainstorm OR typhoon OR Bavi OR river OR evacuation) sourcelang:English',
+          '("辽宁" OR "吉林" OR "黑龙江" OR "沈阳" OR "长春" OR "哈尔滨" OR "松花江" OR "辽河") (洪水 OR 洪涝 OR 暴雨 OR 台风 OR 山洪 OR 河流 OR 排涝) sourcelang:Chinese'
       ];
       const items = await fetchDisasterHeadlines(queries, 'china', isPreferredChinaDisasterSource);
       return items.slice(0, 8);
+  }
+
+  async function fetchWarHeadlines() {
+      const queries = [
+          '(war OR "armed conflict" OR invasion OR airstrike OR missile OR battlefield OR ceasefire) (killed OR attack OR troops OR civilian OR fighting) sourcelang:English',
+          '(Ukraine OR Russia OR Israel OR Gaza OR Iran OR Sudan OR Myanmar OR Congo) (war OR conflict OR attack OR airstrike OR ceasefire) sourcelang:English'
+      ];
+      const warPattern = /(war|armed conflict|invasion|airstrike|missile|battlefield|ceasefire|attack|fighting|killed|troops|civilian|战争|戰爭|冲突|衝突|入侵|空袭|空襲|导弹|導彈|停火|袭击|襲擊|战事|戰事)/i;
+      const items = await fetchDisasterHeadlines(queries, 'war', isPreferredChinaDisasterSource, warPattern);
+      const warLabel = currentLang === 'en' ? 'War' : currentLang === 'zh-TW' ? '戰爭' : '战争';
+      return items.slice(0, 8).map(item => ({ ...item, type: warLabel }));
   }
 
   async function fetchMajorDisasterSummary() {
@@ -2600,7 +2627,7 @@
       }
 
       const texts = getDisasterTextSet();
-      const [eqResult, naturalResult, warPandemicResult, worldDisasterResult, chinaDisasterResult] = await Promise.allSettled([
+      const [eqResult, naturalResult, worldDisasterResult, chinaDisasterResult, warResult] = await Promise.allSettled([
           fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_day.geojson').then(r => {
               if (!r.ok) throw new Error(`eq_api_${r.status}`);
               return r.json();
@@ -2609,12 +2636,9 @@
               if (!r.ok) throw new Error(`eonet_api_${r.status}`);
               return r.json();
           }),
-          fetch('https://www.reddit.com/r/worldnews/new.json?limit=50&raw_json=1').then(r => {
-              if (!r.ok) throw new Error(`reddit_api_${r.status}`);
-              return r.json();
-          }),
           fetchWorldDisasterHeadlines(),
-          fetchChinaDisasterHeadlines()
+          fetchChinaDisasterHeadlines(),
+          fetchWarHeadlines()
       ]);
 
       const summaryParts = [];
@@ -2636,28 +2660,11 @@
           }
       }
 
-      if (warPandemicResult.status === 'fulfilled') {
-          const children = (((warPandemicResult.value || {}).data || {}).children) || [];
-          const geo = pickTrustedGeoHeadlines(children);
-          if (geo.ruUa) {
-              summaryParts.push(`${t('disaster_ru_ua')}：${truncateText(geo.ruUa.title, 42)} [${geo.ruUa.domain}]`);
-          }
-          if (geo.usIran) {
-              summaryParts.push(`${t('disaster_us_iran')}：${truncateText(geo.usIran.title, 42)} [${geo.usIran.domain}]`);
-          }
-      }
-
-      if (chinaDisasterResult.status === 'fulfilled' && Array.isArray(chinaDisasterResult.value) && chinaDisasterResult.value.length > 0) {
-          const headlineText = chinaDisasterResult.value
-              .map(item => `${truncateText(item.title, 30)} [${getSourceName(item.domain)}]`)
-              .join('、');
-          summaryParts.push(`${getChinaDisasterLabel()}：${headlineText}`);
-      }
-
       const summary = summaryParts.join(texts.separator).trim();
       const worldArticles = worldDisasterResult.status === 'fulfilled' && Array.isArray(worldDisasterResult.value) ? worldDisasterResult.value : [];
       const chinaArticles = chinaDisasterResult.status === 'fulfilled' && Array.isArray(chinaDisasterResult.value) ? chinaDisasterResult.value : [];
-      const articles = [...worldArticles, ...chinaArticles].slice(0, 16);
+      const warArticles = warResult.status === 'fulfilled' && Array.isArray(warResult.value) ? warResult.value : [];
+      const articles = [...worldArticles, ...chinaArticles, ...warArticles].slice(0, 24);
 
       if (!summary && articles.length === 0 && (typeof cache.summary === 'string' || Array.isArray(cache.articles))) {
           return { summary: cache.summary, articles: Array.isArray(cache.articles) ? cache.articles : [], stale: true };
@@ -2676,9 +2683,9 @@
       return { summary, articles };
   }
 
-  function renderDisasterReportItems(items, region) {
+  function renderDisasterReportItems(items, region, emptyKey = 'disaster_none') {
       const reports = (Array.isArray(items) ? items : []).filter(item => item && item.region === region).slice(0, 6);
-      if (!reports.length) return `<div class="text-xs text-stone-500 py-1">${escapeHtml(t('disaster_none'))}</div>`;
+      if (!reports.length) return `<div class="text-xs text-stone-500 py-1">${escapeHtml(t(emptyKey))}</div>`;
       return reports.map(item => `
           <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="block py-2 border-b border-rose-100 last:border-b-0 hover:bg-white/60 transition-colors">
               <div class="flex items-start gap-2">
@@ -2723,9 +2730,13 @@
                       <div class="pt-2 pb-1 text-[11px] font-medium text-stone-600">${escapeHtml(t('disaster_china'))}</div>
                       ${renderDisasterReportItems(articles, 'china')}
                   </div>
+                  <div class="mt-3 text-xs font-semibold text-rose-900">${escapeHtml(t('disaster_war'))}</div>
+                  <div class="mt-1 rounded-lg bg-white/50 px-2 divide-y divide-rose-100">
+                      ${renderDisasterReportItems(articles, 'war', 'disaster_war_none')}
+                  </div>
               `;
           }
-          if (majorEl) majorEl.textContent = summary || t('disaster_none');
+          if (majorEl) majorEl.textContent = summary || t('disaster_major_none');
       } catch (err) {
           console.error('Disaster fetch failed', err);
           if (renderToken !== dayInfoRenderToken) return;
@@ -4218,7 +4229,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '23.10';
+        var updateNoticeVersion = '23.12';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -4241,7 +4252,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=23.10').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=23.12').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
