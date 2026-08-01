@@ -41,7 +41,7 @@
   <script src="ai_chat.js?v=21.1"></script>
   <script src="events_data.js?v=21.0"></script>
   <script src="live_downloads_data.js?v=21.8"></script>
-  <script src="buddha_poems_data.js?v=23.12"></script>
+  <script src="buddha_poems_data.js?v=23.14"></script>
   <script>
     function showTooltip(event, html) {
       const tooltip = document.getElementById('event-tooltip');
@@ -2080,7 +2080,7 @@
   }
 
   const WEATHER_CACHE_KEY = 'foli_today_weather_cache_v1';
-  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v5';
+  const DISASTER_CACHE_KEY = 'foli_major_disaster_cache_v7';
   let dayInfoRenderToken = 0;
 
   function getLocalDateKey(date = new Date()) {
@@ -2448,7 +2448,14 @@
           'scio.gov.cn': '国务院新闻办',
           'ln.gov.cn': '辽宁省政府',
           'jl.gov.cn': '吉林省政府',
-          'hlj.gov.cn': '黑龙江省政府'
+          'hlj.gov.cn': '黑龙江省政府',
+          'nhk.or.jp': 'NHK',
+          'japantimes.co.jp': 'Japan Times',
+          'jiji.com': '时事通信',
+          'kyodonews.net': '共同社',
+          'nippon.com': 'Nippon.com',
+          'usgs.gov': 'USGS',
+          'jma.go.jp': '日本气象厅'
       };
       const matchedName = Object.entries(names).find(([domain]) => normalized === domain || normalized.endsWith(`.${domain}`));
       return (matchedName && matchedName[1]) || normalized || 'news';
@@ -2487,7 +2494,13 @@
           'scio.gov.cn',
           'ln.gov.cn',
           'jl.gov.cn',
-          'hlj.gov.cn'
+          'hlj.gov.cn',
+          'nhk.or.jp',
+          'jiji.com',
+          'kyodonews.net',
+          'nippon.com',
+          'usgs.gov',
+          'jma.go.jp'
       ];
       return preferredDomains.some(domainItem => normalized === domainItem || normalized.endsWith(`.${domainItem}`));
   }
@@ -2514,16 +2527,24 @@
   function getDisasterTypeLabel(title) {
       const text = String(title || '').toLowerCase();
       const labels = currentLang === 'en'
-          ? { flood: 'Flood', tornado: 'Tornado', fire: 'Fire', storm: 'Storm', earthquake: 'Earthquake', landslide: 'Landslide', other: 'Disaster' }
+          ? { flood: 'Flood', tornado: 'Tornado', fire: 'Fire', storm: 'Storm', earthquake: 'Earthquake', tsunami: 'Tsunami', volcano: 'Volcano', landslide: 'Landslide', heat: 'Heatwave', cold: 'Cold wave', drought: 'Drought', avalanche: 'Avalanche', dust: 'Dust storm', accident: 'Accident', other: 'Disaster' }
           : currentLang === 'zh-TW'
-              ? { flood: '洪災', tornado: '龍捲風', fire: '火災', storm: '風暴', earthquake: '地震', landslide: '山崩', other: '災害' }
-              : { flood: '洪灾', tornado: '龙卷风', fire: '火灾', storm: '风暴', earthquake: '地震', landslide: '山体滑坡', other: '灾害' };
+              ? { flood: '洪災', tornado: '龍捲風', fire: '火災', storm: '風暴', earthquake: '地震', tsunami: '海嘯', volcano: '火山', landslide: '山崩', heat: '高溫', cold: '寒潮', drought: '乾旱', avalanche: '雪崩', dust: '沙塵暴', accident: '事故', other: '災害' }
+              : { flood: '洪灾', tornado: '龙卷风', fire: '火灾', storm: '风暴', earthquake: '地震', tsunami: '海啸', volcano: '火山', landslide: '山体滑坡', heat: '高温', cold: '寒潮', drought: '干旱', avalanche: '雪崩', dust: '沙尘暴', accident: '事故', other: '灾害' };
       if (/(flood|flooding|floodwaters|洪水|洪灾|洪災|内涝|內澇|暴雨|山洪)/i.test(text)) return labels.flood;
       if (/(tornado|twister|龙卷风|龍捲風)/i.test(text)) return labels.tornado;
       if (/(wildfire|forest fire|wild fire|fire|火灾|火災|山火|森林火灾|森林火災)/i.test(text)) return labels.fire;
       if (/(storm|typhoon|hurricane|cyclone|thunderstorm|强对流|強對流|大风|大風|冰雹|颱風|台风)/i.test(text)) return labels.storm;
-      if (/(earthquake|地震)/i.test(text)) return labels.earthquake;
+      if (/(tsunami|海啸|海嘯|津波)/i.test(text)) return labels.tsunami;
+      if (/(volcan|eruption|火山|噴火)/i.test(text)) return labels.volcano;
+      if (/(earthquake|quake|seismic|地震)/i.test(text)) return labels.earthquake;
       if (/(landslide|mudslide|山体滑坡|山體滑坡|山洪)/i.test(text)) return labels.landslide;
+      if (/(heatwave|heat wave|extreme heat|高温|高溫)/i.test(text)) return labels.heat;
+      if (/(cold wave|cold snap|blizzard|snowstorm|寒潮|暴雪|大雪)/i.test(text)) return labels.cold;
+      if (/(drought|乾旱|干旱)/i.test(text)) return labels.drought;
+      if (/(avalanche|雪崩|雪崩)/i.test(text)) return labels.avalanche;
+      if (/(dust storm|sandstorm|沙尘暴|沙塵暴)/i.test(text)) return labels.dust;
+      if (/(hail|lightning|dam break|dam failure|building collapse|industrial accident|冰雹|雷击|雷擊|溃坝|潰壩|建筑倒塌|建築倒塌|工业事故|工業事故)/i.test(text)) return labels.accident;
       return labels.other;
   }
 
@@ -2564,7 +2585,7 @@
                   const title = String((article && article.title) || '');
                   const isTarget = titlePattern
                       ? titlePattern.test(title)
-                      : /(flood|flooding|floodwaters|tornado|twister|wildfire|forest fire|wild fire|fire|earthquake|landslide|mudslide|typhoon|hurricane|cyclone|storm|洪水|洪灾|洪災|内涝|內澇|暴雨|山洪|龙卷风|龍捲風|火灾|火災|山火|地震|山体滑坡|山體滑坡|台风|台風|强对流|強對流|大风|大風|冰雹)/i.test(title);
+                      : /(flood|flooding|floodwaters|tornado|twister|wildfire|forest fire|wild fire|fire|earthquake|quake|seismic|tsunami|volcano|eruption|landslide|mudslide|typhoon|hurricane|cyclone|storm|heatwave|heat wave|drought|blizzard|snowstorm|avalanche|dust storm|sandstorm|hail|lightning|dam break|dam failure|building collapse|industrial accident|洪水|洪灾|洪災|内涝|內澇|暴雨|山洪|龙卷风|龍捲風|火灾|火災|山火|地震|海啸|海嘯|津波|火山|噴火|山体滑坡|山體滑坡|台风|台風|强对流|強對流|大风|大風|冰雹|高温|高溫|干旱|乾旱|寒潮|暴雪|雪崩|沙尘暴|沙塵暴|雷击|雷擊|溃坝|潰壩|建筑倒塌|建築倒塌)/i.test(title);
                   return isTarget;
               })
           };
@@ -2585,21 +2606,51 @@
 
   async function fetchWorldDisasterHeadlines() {
       const queries = [
-          '(flood OR flooding OR tornado OR twister OR wildfire OR "forest fire" OR earthquake OR landslide) (evacuation OR rescue OR warning OR damage OR disaster) sourcelang:English',
-          '(typhoon OR hurricane OR cyclone OR severe storm OR wildfire) (evacuation OR emergency OR damage OR rescue) sourcelang:English',
-          '(flood OR tornado OR wildfire OR earthquake) (Japan OR India OR Europe OR America OR Australia OR Africa) sourcelang:English'
+          '(flood OR flooding OR tornado OR twister OR wildfire OR "forest fire" OR earthquake OR quake OR tsunami OR volcano OR landslide) (evacuation OR rescue OR warning OR damage OR disaster) sourcelang:English',
+          '(typhoon OR hurricane OR cyclone OR severe storm OR wildfire OR heatwave OR drought OR blizzard OR avalanche) (evacuation OR emergency OR damage OR rescue) sourcelang:English',
+          '(earthquake OR quake OR seismic OR tsunami) (Japan OR Kumamoto OR Kyushu OR Tokyo OR Honshu) sourcelang:English',
+          '("地震" OR "津波" OR "噴火") ("熊本" OR "九州" OR "日本") sourcelang:Japanese',
+          '(flood OR tornado OR wildfire OR earthquake OR tsunami OR volcano) (Japan OR India OR Europe OR America OR Australia OR Africa) sourcelang:English'
       ];
       return fetchDisasterHeadlines(queries, 'world', isPreferredChinaDisasterSource);
   }
 
+  async function fetchEarthquakeReports() {
+      try {
+          const resp = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson');
+          if (!resp.ok) throw new Error(`earthquake_feed_${resp.status}`);
+          const data = await resp.json();
+          const features = Array.isArray(data && data.features) ? data.features : [];
+          return features
+              .filter(feature => Number(feature && feature.properties && feature.properties.mag) >= 5.5)
+              .sort((a, b) => Number(b && b.properties && b.properties.time) - Number(a && a.properties && a.properties.time))
+              .slice(0, 8)
+              .map(feature => {
+                  const props = feature.properties || {};
+                  return {
+                      title: `${props.place || 'Earthquake'} M${Number(props.mag).toFixed(1)}`,
+                      url: props.url || 'https://earthquake.usgs.gov/earthquakes/map/',
+                      domain: 'usgs.gov',
+                      source: 'USGS',
+                      type: getDisasterTypeLabel('earthquake'),
+                      region: 'world',
+                      date: props.time ? new Date(props.time).toISOString() : ''
+                  };
+              });
+      } catch (err) {
+          console.warn('Earthquake feed unavailable', err);
+          return [];
+      }
+  }
+
   async function fetchChinaDisasterHeadlines() {
       const queries = [
-          '(China OR Guangxi OR Hubei OR Zhejiang OR Shanghai) (flood OR floods OR flooding OR tornado OR typhoon OR storm OR landslide OR wildfire OR fire OR evacuation) sourcelang:English',
+          '(China OR Guangxi OR Hubei OR Zhejiang OR Shanghai OR Sichuan OR Yunnan OR Xinjiang) (flood OR floods OR flooding OR tornado OR typhoon OR storm OR landslide OR wildfire OR fire OR earthquake OR tsunami OR volcano OR heatwave OR drought OR blizzard OR hail OR lightning OR evacuation) sourcelang:English',
           '("Guangxi" OR "Nanning" OR "Hengzhou") (flood OR floods OR flooding OR typhoon OR dam OR wildfire OR fire) sourcelang:English',
           '("Hubei" OR "Huanggang" OR "Wuhan") (tornado OR twister OR "severe storm" OR "strong winds") sourcelang:English',
           '("广西" OR "桂林" OR "柳州" OR "梧州" OR "河池" OR "百色") (洪水 OR 洪灾 OR 内涝 OR 暴雨 OR 山洪 OR 火灾 OR 山火) sourcelang:Chinese',
           '("湖北" OR "武汉" OR "宜昌" OR "襄阳" OR "荆州" OR "孝感" OR "黄冈") ("龙卷风" OR 强对流 OR 大风 OR 冰雹 OR 火灾) sourcelang:Chinese',
-          '("中国" OR "华南" OR "华中" OR "长江") (洪水 OR 洪灾 OR 暴雨 OR 山洪 OR "龙卷风" OR 强对流 OR 火灾 OR 山火) sourcelang:Chinese',
+          '("中国" OR "华南" OR "华中" OR "长江") (洪水 OR 洪灾 OR 暴雨 OR 山洪 OR "龙卷风" OR 强对流 OR 火灾 OR 山火 OR 地震 OR 海啸 OR 火山 OR 高温 OR 干旱 OR 暴雪 OR 冰雹 OR 雷击 OR 溃坝) sourcelang:Chinese',
           '("Northeast China" OR Liaoning OR Jilin OR Heilongjiang OR Shenyang OR Changchun OR Harbin OR Songhua) (flood OR flooding OR rainstorm OR typhoon OR Bavi OR river OR evacuation) sourcelang:English',
           '("辽宁" OR "吉林" OR "黑龙江" OR "沈阳" OR "长春" OR "哈尔滨" OR "松花江" OR "辽河") (洪水 OR 洪涝 OR 暴雨 OR 台风 OR 山洪 OR 河流 OR 排涝) sourcelang:Chinese'
       ];
@@ -2627,11 +2678,12 @@
       }
 
       const texts = getDisasterTextSet();
-      const [eqResult, naturalResult, worldDisasterResult, chinaDisasterResult, warResult] = await Promise.allSettled([
+      const [eqResult, earthquakeReportsResult, naturalResult, worldDisasterResult, chinaDisasterResult, warResult] = await Promise.allSettled([
           fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_day.geojson').then(r => {
               if (!r.ok) throw new Error(`eq_api_${r.status}`);
               return r.json();
           }),
+          fetchEarthquakeReports(),
           fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30').then(r => {
               if (!r.ok) throw new Error(`eonet_api_${r.status}`);
               return r.json();
@@ -2661,10 +2713,11 @@
       }
 
       const summary = summaryParts.join(texts.separator).trim();
+      const earthquakeArticles = earthquakeReportsResult.status === 'fulfilled' && Array.isArray(earthquakeReportsResult.value) ? earthquakeReportsResult.value : [];
       const worldArticles = worldDisasterResult.status === 'fulfilled' && Array.isArray(worldDisasterResult.value) ? worldDisasterResult.value : [];
       const chinaArticles = chinaDisasterResult.status === 'fulfilled' && Array.isArray(chinaDisasterResult.value) ? chinaDisasterResult.value : [];
       const warArticles = warResult.status === 'fulfilled' && Array.isArray(warResult.value) ? warResult.value : [];
-      const articles = [...worldArticles, ...chinaArticles, ...warArticles].slice(0, 24);
+      const articles = [...earthquakeArticles, ...worldArticles, ...chinaArticles, ...warArticles].slice(0, 40);
 
       if (!summary && articles.length === 0 && (typeof cache.summary === 'string' || Array.isArray(cache.articles))) {
           return { summary: cache.summary, articles: Array.isArray(cache.articles) ? cache.articles : [], stale: true };
@@ -4229,7 +4282,7 @@
         var updateBanner = document.getElementById('update-banner');
         var updateBannerText = document.getElementById('update-banner-text');
         var updateBannerBtn = document.getElementById('update-banner-btn');
-        var updateNoticeVersion = '23.12';
+        var updateNoticeVersion = '23.14';
         var updateNoticeKey = 'foli_update_notice_seen_' + updateNoticeVersion;
 
         function showUpdateBanner() {
@@ -4252,7 +4305,7 @@
           }
         }
 
-        navigator.serviceWorker.register('/sw-v2.js?v=23.12').then(function(reg) {
+        navigator.serviceWorker.register('/sw-v2.js?v=23.14').then(function(reg) {
           registration = reg;
           reg.onupdatefound = function() {
             var installing = reg.installing;
