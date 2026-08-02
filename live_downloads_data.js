@@ -1,6 +1,10 @@
 
 const live_downloads = [
     {
+        "title": "20260801觀世音吉祥日直播开示",
+        "url1": "https://e.pcloud.link/publink/show?code=XZt2ky7ZCwvC4NyIYCjD8GSskDNeSVs6ECmy"
+    },
+    {
         "title": "20260529 佛难纪念日直播开示",
         "url1": "https://e.pcloud.link/publink/show?code=XZrnxrZeybaq8p6eObsNa0NObXlMSjtAHj7"
     },
